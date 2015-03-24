@@ -24,6 +24,9 @@ importPlate <- function(path, features=NULL) {
   #   A nested list with the top level hierarchy corresponding to a feature and
   #   the next lower level corresponding to the data in a single image (there 
   #   are 3456 = 9 images x 24 rows x 36 cols slots on this level)
+  #
+  # TODO(nbenn): Add metadata to lowest list hierarchy, flatten hierarchy by
+  #              one level
   
   readFeatureFile <- function(filepath) {
     require("R.matlab")
@@ -108,6 +111,59 @@ importExperiment <- function(path, plates, features) {
   return(import.data)
 }
 
+extractImageData <- function(data, row, col, img=5) {
+  # Given feature data from a whole plate, extract the data for a single image
+  # in a specified well
+  #
+  # Args:
+  #   data: Data for a whole plate, list of features
+  #   row:  Row of the well, specified either by A:P, a:P, or 1:16
+  #   col:  Column number of the well, specified by 1:24
+  #   img:  Image number within the well, 1:9
+  #
+  # Returns:
+  #   A list of features with all values for the given image
+  
+  # Input validation
+  # 9 entries per well, 16x24 wells
+  if(any(sapply(data, function(x) length(x) != 3456))) 
+    stop("expecting data to be of length 3456")
+  # 9 images per well
+  img <- as.integer(img)
+  if(img < 1 | img > 9) stop("img has to be in the range 1:9")
+  # 24 columns per plate
+  col <- as.integer(col)
+  if(col < 1 | col > 24) stop("col has to be in the range 1:24")
+  # 16 rows indicated by A/a:P/p
+  if(!is.integer(row)) {
+    if (row == "a" | row == "A") row <- 1
+    else if (row == "b" | row == "B") row <- 2
+    else if (row == "c" | row == "C") row <- 3
+    else if (row == "d" | row == "D") row <- 4
+    else if (row == "e" | row == "E") row <- 5
+    else if (row == "f" | row == "F") row <- 6
+    else if (row == "g" | row == "G") row <- 7
+    else if (row == "h" | row == "H") row <- 8
+    else if (row == "i" | row == "I") row <- 9
+    else if (row == "j" | row == "J") row <- 10
+    else if (row == "k" | row == "K") row <- 11
+    else if (row == "l" | row == "L") row <- 12
+    else if (row == "m" | row == "M") row <- 13  
+    else if (row == "n" | row == "N") row <- 14 
+    else if (row == "o" | row == "O") row <- 15 
+    else if (row == "p" | row == "P") row <- 16
+    else row <- as.integer(row)
+  }
+  # or 1:16
+  if(row < 1 | row > 16) stop("row has to be in the range 1:16, a:p or A:P")
+  
+  # the data is in row major order, in groups of 9 images
+  index <- ((row-1)*24+(col-1))*9+img
+
+  # extract data of index for all features
+  return(lapply(data, function(x) x[[index]][[1]]))
+}
+
 ## Loading data
 
 # import a single plate
@@ -123,3 +179,4 @@ plates   <- c("KB2-03-1I", "KB2-03-1J")
 features <- c("Cells.AreaShape_Area", "Cells.AreaShape_Eccentricity")
 dat.expe <- importExperiment(path, plates, features)
 
+KB2_02_1I.f12.7 <- extractImageData(data=dat.plat, row="F", col=12, img=7)
