@@ -34,7 +34,7 @@ importPlate <- function(path, features=NULL) {
   
   getFeatureName <- function(filepath) {
     # extract the filename from the path
-    name <- tail(unlist(strsplit(filepath, "[/]")),n=1)
+    name <- tail(unlist(strsplit(filepath, "[/]")), n=1)
     # split into substrings separated by "."
     name <- unlist(strsplit(name, "[.]"))
     # remove last substring, hopefully ".mat"
@@ -57,7 +57,7 @@ importPlate <- function(path, features=NULL) {
     filenames <- filenames[keep]    
   }
   
-  cat("fetching ", length(filenames), " files.\n", sep = "")
+  cat("\nfetching ", length(filenames), " files.\n", sep = "")
   
   # get the data
   import.data <- lapply(filenames, readFeatureFile)
@@ -69,7 +69,57 @@ importPlate <- function(path, features=NULL) {
   return(import.data)
 }
 
+importExperiment <- function(path, plates, features) {
+  # Read all available single cell feature data for a given experiment,
+  # spanning multiple plates
+  #
+  # Args:
+  #   path:     Folder path to folder corresponding to an experiment
+  #   plates:   Names of plates belonging to the given experiment that are to
+  #             be imported
+  #   features: Vector holding strings corresponding to features to be imported
+  #
+  # Returns:
+  #   A nested list with the top level hierarchy corresponding to a plate and
+  #   the level below to a feature
+  
+  # get all directories below the specified path
+  all <- list.dirs(path=path, full.names=TRUE, recursive=TRUE)
+  # array (a col for each plate and a row for each dir in all) of bool,
+  # specifying the dirs that match each plate (one TRUE per col) 
+  matches <- sapply(plates, function(pattern, paths) {
+    sapply(paths, function(x) {
+      grepl(pattern, tail(unlist(strsplit(x, "[/]")), n=1))
+    })
+  }, all)
+  # collapse array to vector using OR operation
+  matches <- apply(matches, 1, any)
+  # drop unused dirs
+  plate.paths <- all[matches]
+  
+  # import data
+  import.data <- lapply(plate.paths, importPlate, features)
+  import.name <- lapply(plate.paths, function(x) {
+    name <- paste(tail(unlist(strsplit(x, "[/]")), n=2), collapse=".")
+    return(gsub("-", "_", name))
+  })
+  names(import.data) <- import.name
+
+  return(import.data)
+}
+
 ## Loading data
 
-data <- importPlate("/Users/nbennett/Polybox/MasterThesis/openBISDownload/INFECTX_PUBLISHED/ADENO_TEAM/ADENO-AU-K1/KB2-02-1I", c("cells", "AreaShape"))
-names(data)
+# import a single plate
+path     <- paste("/Users/nbennett/Polybox/MasterThesis/openBISDownload/",
+                  "INFECTX_PUBLISHED/ADENO_TEAM/ADENO-AU-K1/KB2-02-1I", sep="")
+features <- c("cells", "AreaShape")
+dat.plat <- importPlate(path, features)
+
+# import whole experiment
+path     <- paste("/Users/nbennett/Polybox/MasterThesis/openBISDownload/",
+                  "INFECTX_PUBLISHED/ADENO_TEAM", sep="")
+plates   <- c("KB2-03-1I", "KB2-03-1J")
+features <- c("Cells.AreaShape_Area", "Cells.AreaShape_Eccentricity")
+dat.expe <- importExperiment(path, plates, features)
+
