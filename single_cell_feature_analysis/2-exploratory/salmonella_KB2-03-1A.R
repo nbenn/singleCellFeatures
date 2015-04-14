@@ -18,7 +18,24 @@ library(singleCellFeatures)
 path  <- paste("/Users/nbennett/Polybox/MasterThesis/openBISDownload/",
                "INFECTX_PUBLISHED/SALMONELLA_TEAM/SALMONELLA-AU-K1/KB2-04-1A", 
                sep="")
-plate <- importCompletePlate(path, NULL)
+plate    <- importCompletePlate(path, NULL)
+i.8.all  <- extractPartialPlate(plate, cols=8, rows="I", imgs=5)
+i.8.data <- i.8$data$I8$data$img_22
+
+hist(i.8$data$I8$data$img_22$Cells.Intensity_StdIntensity_CorrActin)
+
+beanplot(i.8$data$I8$data$img_22$Cells.AreaShape_Area,
+         i.8$data$I8$data$img_22$Cells.AreaShape_Perimeter,
+         i.8$data$I8$data$img_22$Cells.Intensity_IntegratedIntensity_CorrActin,
+         i.8$data$I8$data$img_22$Cells.Intensity_IntegratedIntensity_CorrDNA,
+         i.8$data$I8$data$img_22$Cells.Intensity_IntegratedIntensity_CorrPathogen)
+
+plot(i.8$data$I8$data$img_22$Cells.Location_Center_X,
+     i.8$data$I8$data$img_22$Cells.Location_Center_Y)
+
+plot(i.8$data$I8$data$img_22$Bacteria.Location_Center_X,
+     i.8$data$I8$data$img_22$Bacteria.Location_Center_Y)
+
 
 sum(sapply(dat.plat$data$B10$data, function(x) length(x[[1]])))
 

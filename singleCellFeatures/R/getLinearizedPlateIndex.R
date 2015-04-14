@@ -12,6 +12,7 @@
 #' @examples
 #' getLinearizedPlateIndex("B", 12, NULL)
 #' getLinearizedPlateIndex(2, 12, 5)
+#'
 
 getLinearizedPlateIndex <- function(row, col, img=NULL) {
   # Input validation

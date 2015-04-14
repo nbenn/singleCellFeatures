@@ -39,11 +39,13 @@
 #'
 #' @export
 
-importCompletePlate <- function(path, features=NULL) {
+importCompletePlate <- function(path, features=NULL, skip=NULL) {
 
   readFeatureFile <- function(filepath) {
     require("R.matlab")
     # nesting of list contains no information
+    #cat(".")
+    print(filepath)
     data <- readMat(filepath)[[1]][[1]][[1]][[1]]
     if (length(data) == 3456) {
       return(data)
@@ -77,7 +79,8 @@ importCompletePlate <- function(path, features=NULL) {
     } else {
       # if no previous results are available, fetch from aggregate
       cat("\nfetching metadata from aggregate.\n", sep = "")        
-      metad.path <- paste(plate.path, "../../../../../Aggregates", sep="/")
+      metad.path <- paste(plate.path, "../../../../../GenomeAggregates", 
+                          sep="/")
       # figure out experiment name
       exper.name <- tail(unlist(strsplit(plate.path, "[/]")), n=2)[1]
       # figure out pathogen name
@@ -125,12 +128,27 @@ importCompletePlate <- function(path, features=NULL) {
   
   # if features specified, drop other files
   if (!is.null(features)) {
+    names <- lapply(filenames, function(x) {
+      tail(unlist(strsplit(x, "[/]")), n=1)
+    })
     # for each feature entry, get all partial matches
-    keep <- lapply(features, grep, x=filenames, ignore.case=TRUE)
+    keep <- lapply(features, grep, x=names)
     # remove duplicates from match index
     keep <- unique(unlist(keep))
     # drop unmatched features
     filenames <- filenames[keep]    
+  }
+  # if skip specified, drop features
+  if (!is.null(skip)) {
+      names <- lapply(filenames, function(x) {
+      tail(unlist(strsplit(x, "[/]")), n=1)
+    })
+    # for each drop entry, get all partial matches
+    drop <- lapply(skip, grep, x=names)
+    # remove duplicates from match index
+    drop <- unique(unlist(drop))
+    # drop unmatched features
+    filenames <- filenames[-drop]    
   }
   
   cat("fetching ", length(filenames), " files.\n", sep = "")

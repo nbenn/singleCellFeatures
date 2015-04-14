@@ -4,7 +4,7 @@
 \alias{importCompletePlate}
 \title{Read specified single cell features for a single plate}
 \usage{
-importCompletePlate(path, features = NULL)
+importCompletePlate(path, features = NULL, skip = NULL)
 }
 \arguments{
 \item{path}{Folder path to folder corresponding to a single plate,
