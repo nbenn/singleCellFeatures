@@ -3,84 +3,58 @@
 #' Find all wells on all plates of a given pathogen/experiment that contain
 #' the specified gene
 #'
+#' @param gene       String/integer specifying the gene (case sensitive)
 #' @param experiment Name of the experiment to be considered (should start with
-#'                   pathogen name, all converted to uppercase)
-#'                   to be imported
-#' @param gene       String specifying the gene (case sensitive)
+#'                   pathogen name rest is optional and used for narrowing down
+#'                   the number of results, all converted to uppercase)
+#' @param plates     An optional vector of plate names to further restrict the
+#'                   results
+#' @param verbose    Verbosity argument (FALSE/TRUE)
 #'
 #' @return A table containing columns for experiment, barcode, well row and well
 #'         column
 #'
 #' @examples
-#' mtor.bruc.du <- findPlateWellsFromGene("brucella-du-k", "MTOR")
-#' scra.bruc.du <- findPlateWellsFromGene("brucella-du-k", "SCRAMBLED")
+#' set1 <- findPlateWellsFromGene("MTOR", "brucella-du-k")
+#' set2 <- findPlateWellsFromGene(2475, "brucella-du-k")
+#' set3 <- findPlateWellsFromGene("SCRAMBLED", "brucella-du-k")
 #'
 #' @export
 
-findPlateWellsFromGene <- function(experiment, gene) {
-  # load file containing paths/passwords
-  data(paths, envir = environment())
-  # ensure correct case
+findPlateWellsFromGene <- function(gene, experiment, plates=NULL,
+                                   verbose=FALSE) {
+  # ensure correct case for pathogen/experiment
   patho.upper <- toupper(unlist(strsplit(experiment, "-"))[1])
+  patho.lower <- tolower(patho.upper)
+  patho.camel <- paste0(toupper(substring(patho.lower, 1, 1)), 
+                        substring(patho.lower, 2))
   experiment  <- toupper(experiment)
   
-  # sef filename for the needed genome wide aggregate file (there is one for
-  # each pathogen)
-  if(patho.upper=="ADENO") {
-    gen.name <- paste(filepaths$gen.aggr, "AdenoReport_20141008.csv", sep="/")
-  } else if(patho.upper=="BARTONELLA") {
-    gen.name <- paste(filepaths$gen.aggr, "BartonellaReport_20141010.csv", 
-                      sep="/")
-  } else if(patho.upper=="BRUCELLA") {
-    gen.name <- paste(filepaths$gen.aggr, "BrucellaReport_20141010.csv",
-                      sep="/")
-  } else stop("unknown pathogen")
-
-  # set filename for the kinome wide aggregate file (one for all pathogens; not
-  # the case right now...)
-  kin.name <- paste(filepaths$kin.aggr, 
-                    "InfectX\ Kinome\ Data\ -\ Well\ aggregate.csv", sep="/")
-  # load the two aggregate files
-  gen.data <- read.table(gen.name, header = TRUE, sep = "\t", fill = TRUE, 
-                         stringsAsFactors = FALSE, comment.char = "")
-  kin.data <- read.table(kin.name, header = TRUE, sep = ";", fill = TRUE, 
-                         stringsAsFactors = FALSE, comment.char = "")
-  # search for gene and reduce number of columns
-  gene.gen <- gen.data[gen.data$Name==gene,
-                       c('Experiment', 'Barcode', 'WellRow', 'WellColumn')]
-  gene.kin <- kin.data[kin.data$GeneName==gene,
-                       c('Experiment', 'Barcode', 'WellRow', 'WellColumn')]
-  gene.kin$Experiment <- unlist(lapply(strsplit(gene.kin$Experiment, "/"), 
-                                       tail, n=1))
-  # search for experiment
-  expe.gen <- gene.gen[grep(experiment, gene.gen$Experiment),]
-  expe.gen <- expe.gen[order(expe.gen$Barcode),]
-  row.names(expe.gen) <- NULL
-  expe.kin <- gene.kin[grep(experiment, gene.kin$Experiment),]
-  expe.kin <- expe.kin[order(expe.kin$Barcode),]
-  row.names(expe.kin) <- NULL
+  dataset.name <- paste0("wellDatabase", patho.camel)
+  object.name  <- paste0("well.database.", patho.lower)
   
-  # best case: kinome & genome results are identical as they should be if a
-  # kinase is searched for
-  if(identical(expe.gen, expe.kin)) return(expe.gen)
-  # no results found in genome aggreagte: happens if search is for a control
-  # (eg. scrambled), as the type of control is not specified in genome wide
-  # aggregates
-  else if(nrow(expe.gen)==0) {
-    return(expe.kin)
-  } else {
-    # when the results from a genome wide aggregate differs from the kinome
-    # wide, as a workaround the larger of the two is returned
-    cat("\nAttention: kinome and genome results differ.\n\nGenome:\n")
-    print(expe.gen)
-    cat("\nKinome:\n")
-    print(expe.kin)
-    if(nrow(expe.gen) > nrow(expe.kin)) {
-      cat("\nReturning the larger of the two (genome).\n\n")
-      return(expe.gen)
-    } else {
-      cat("\nReturning the larger of the two (kinome).\n\n")
-      return(expe.kin)
+  data(plateDatabase, envir=environment())
+  data(list=dataset.name, envir=environment())
+  well.database <- get(object.name)
+  
+  curr.plates <- plate.database[grep(experiment, plate.database$Experiment),]
+  if(!is.null(plates)) {
+    intersection <- intersect(plates, curr.plates$Barcode)
+    if(length(intersection) < 1) {
+      stop("no plates found with the given restrictions")
     }
+    curr.plates <- curr.plates[which(curr.plates$Barcode %in% intersection),]
   }
+  if(is.character(gene)) {
+    curr.wells <- well.database[well.database$Name==gene,]
+  } else if(is.integer(gene) | is.numeric(gene)) {
+    gene <- as.integer(gene)
+    curr.wells <- well.database[well.database$ID==gene,]
+  } else stop("cannot make sense of gene argument (expecting int or char)")
+  
+  res.tab <- curr.wells[which(curr.wells$Barcode %in% curr.plates$Barcode),]
+  res.lst <- apply(res.tab, 1, function(row) {
+    WellLocation(row[["Barcode"]], row[["WellRow"]], row[["WellColumn"]])
+  })
+  return(res.lst)
 }
