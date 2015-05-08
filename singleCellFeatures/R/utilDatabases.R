@@ -2,7 +2,7 @@
 #' 
 #' In order to update the settingsDatabase object, this helper function fetches
 #' the current settingsDatabase object for the user to modify and save using
-#' updateDatabaseSettingsSet
+#' updateDatabaseSettingsSet.
 #'
 #' @return The current settingsDatabase object
 #'
@@ -55,7 +55,56 @@ updateDatabaseSettingsSet <- function(old.list, new.list=NULL) {
   # concatenante current settingsDatabase and new key-value list
   settings.database <- c(old.list, new.list)
   save(settings.database,
-       file=paste0(settings.database$package, "/data/settingsDatabase.rda"),
+       file=paste0(settings.database$package, "/", "data/settingsDatabase.rda"),
+       compression_level=1)
+}
+
+#' Update the featureDatabase object
+#' 
+#' In order to update the featureDatabase object, the current featureDatabase
+#' object is fetched and the supplied list is used to replace the list in the
+#' specified slot.
+#'
+#' @param pathogen Required parameter specifying the slot (the pathogen) to be
+#'                 modified (old list is replaced by new one).
+#' @param features Required parameter holding the new list to be added.
+#'
+#' @return NULL (invisibly). The updated featureDatabase object saved to the
+#'         /data folder. For the new file to be available, the package has to
+#'         be reloaded.
+#'
+#' @examples
+#' # get a mat data set
+#' dat <- MatData(PlateLocation("KB2-01-1W"))
+#' # to following lines are only to check if the feature set is complete
+#' #names <- read.delim(paste0("/", "Users/nbennett/Polybox/MasterThesis/",
+#' #                           "openBISDownload/INFECTX_PUBLISHED/",
+#' #                           "BRUCELLA_TEAM/", "BRUCELLA-AU-K1/KB2-01-1W/",
+#' #                           "filenames.tsv"),
+#' #                    header=FALSE, sep=" ", stringsAsFactors=FALSE)
+#' #names <- names[,1]
+#' #names <- sapply(names, function(x) unlist(strsplit(x, ".mat$")))
+#' #names[which(!names %in% getFeatureNames(dat))]
+#' # update the table with the featurenames of the fetched/checked data set
+#' updateDatabaseFeatures("brucella", getFeatureNames(dat))
+#' 
+#' @export
+updateDatabaseFeatures <- function(pathogen, features) {
+  # load settingsDatabase (for data path)
+  data(settingsDatabase, envir=environment())
+  # load current featureDatabase
+  data(featureDatabase, envir=environment())
+  pathogen <- tolower(pathogen)
+  if(!pathogen %in% names(feature.database)) {
+    stop("pathogen has to be one of\n", paste(names(feature.database),
+                                              collapse="\n"))
+  }
+  if(!is.vector(features, mode = "character")) {
+    stop("expecting a vector of characters for features.")
+  }
+  feature.database[[pathogen]] <- features
+  save(feature.database,
+       file=paste0(settings.database$package, "/", "data/featureDatabase.rda"),
        compression_level=1)
 }
 
@@ -77,9 +126,9 @@ updateDatabaseSettingsSet <- function(old.list, new.list=NULL) {
 #' 
 #' @export
 updateDatabasePlate <- function() {
-  
+
   processPathogen <- function(path) {
-    
+
     processPlate <- function(barcode, data) {
       # extract all data corresponding to the current plate
       plate <- data[data$Barcode == barcode,]
@@ -103,7 +152,7 @@ updateDatabasePlate <- function() {
       }
       return(c(barcode, space, group, exper))
     }
-    
+
     message("processing ", tail(unlist(strsplit(path, "/")), n=1))
     # load the genome aggregate file of the current pathogen
     pathogen <- read.delim(path, as.is=TRUE)
@@ -113,7 +162,7 @@ updateDatabasePlate <- function() {
     result <- sapply(plates, processPlate, pathogen)
     return(t(result))
   }
-  
+
   # load path of genome aggregate files
   data(settingsDatabase, envir=environment())
   # find all genome aggregate files
@@ -123,16 +172,16 @@ updateDatabasePlate <- function() {
   registerDoMC(cores=n.cores)
   message("found ", length(files), " .csv files; using ", n.cores, " cores.")
   # process each of the files (they are per pathogen)
-  plate.database <- foreach(i=1:length(files), .combine=rbind) %doparMC% {
+  plate.database <- foreach(i=1:length(files), .combine=rbind) %dopar% {
     processPathogen(files[[i]])
   }
-  message(paste(plate.database$out, collapse="\n"))
-  plate.database <- plate.database$res
+  #message(paste(plate.database$out, collapse="\n"))
+  #plate.database <- plate.database$res
   colnames(plate.database) <- c("Barcode", "Space", "Group", "Experiment")
   plate.database <- as.data.frame(plate.database, stringsAsFactors=FALSE)
   rownames(plate.database) <- NULL
   save(plate.database,
-       file=paste0(settings.database$package, "/data/plateDatabase.rda"),
+       file=paste0(settings.database$package, "/", "data/plateDatabase.rda"),
        compression_level=1)
   invisible(NULL)
 }
@@ -161,16 +210,16 @@ updateDatabasePlate <- function() {
 #' 
 #' @export
 updateDatabaseWells <- function(pathogens=NULL) {
-  
+
   processPathogen <- function(path, supp.data) {
     message("processing ", tail(unlist(strsplit(path, "/")), n=1))
     # read genome aggregate file of the current pathogen
-    pathogen.data.all <- read.delim(path, as.is=TRUE)
+    pathogen.all <- read.delim(path, as.is=TRUE)
     # reduce the dataset a handful of cols (keep filesize/loading times down)
-    pathogen.data.gen <- pathogen.data.all[c("Barcode", "WellRow", "WellColumn",
+    pathogen.gen <- pathogen.all[c("Barcode", "WellRow", "WellColumn",
                                              "WellType", "ID", "Name")]
     # get the name of the current pathogen: "PATHOGEN_TEAM"
-    pathogen.name <- unique(pathogen.data.all$Group)
+    pathogen.name <- unique(pathogen.all$Group)
     if(length(pathogen.name) != 1) stop("different group names within pathogen")
     # get the name of the current pathogen: strip "_TEAM"
     pathogen.name <- unlist(strsplit(pathogen.name, "_"))
@@ -180,13 +229,13 @@ updateDatabaseWells <- function(pathogens=NULL) {
     # get the name of the current pathogen: "pathogen"
     pathogen.name <- tolower(pathogen.name[1])
     # extract data for current pathogen from kinome aggregate
-    pathogen.data.kin <- supp.data[grep(paste0("^", toupper(pathogen.name), 
+    pathogen.kin <- supp.data[grep(paste0("^", toupper(pathogen.name),
                                                "-TEAM"), supp.data$Experiment),]
     # find all plates in the current genome dataset
-    barcode.gen <- unique(pathogen.data.gen$Barcode)
-    # find all plates in the current kinome dataset    
-    barcode.kin <- unique(pathogen.data.kin$Barcode)
-    # find all plates in both the current genome and kinome datasets      
+    barcode.gen <- unique(pathogen.gen$Barcode)
+    # find all plates in the current kinome dataset
+    barcode.kin <- unique(pathogen.kin$Barcode)
+    # find all plates in both the current genome and kinome datasets
     matches <- barcode.kin %in% barcode.gen
     barcode.upd <- barcode.kin[matches]
     message("augmenting ", length(barcode.upd), " of the ", length(barcode.gen),
@@ -196,31 +245,31 @@ updateDatabaseWells <- function(pathogens=NULL) {
                     rep(rep(LETTERS[1:16], each=24), length(barcode.upd)),
                     rep(rep(1:24, 16), length(barcode.upd)), sep=":")
     # get indices of all wells to be updated
-    ind.gen <- match(update, paste(pathogen.data.gen$Barcode,
-                                   pathogen.data.gen$WellRow,
-                                   pathogen.data.gen$WellColumn, sep=":"))
+    ind.gen <- match(update, paste(pathogen.gen$Barcode,
+                                   pathogen.gen$WellRow,
+                                   pathogen.gen$WellColumn, sep=":"))
     # get indices of all wells containing the data for the update
-    ind.kin <- match(update, paste(pathogen.data.kin$Barcode,
-                                   pathogen.data.kin$WellRow,
-                                   pathogen.data.kin$WellColumn, sep=":"))
+    ind.kin <- match(update, paste(pathogen.kin$Barcode,
+                                   pathogen.kin$WellRow,
+                                   pathogen.kin$WellColumn, sep=":"))
     # update some of the cols
-    pathogen.data.gen[ind.gen,]$Name <- pathogen.data.kin[ind.kin,]$GeneName
-    pathogen.data.gen[ind.gen,]$ID   <- pathogen.data.kin[ind.kin,]$GeneID    
+    pathogen.gen[ind.gen,]$Name <- pathogen.kin[ind.kin,]$GeneName
+    pathogen.gen[ind.gen,]$ID   <- pathogen.kin[ind.kin,]$GeneID
     # set the name the final object will have
     object.name   <- paste0("well.database.", pathogen.name)
-    # set file name for the result    
-    file.name     <- paste0(settings.database$package, "/data/wellDatabase", 
-                            toupper(substring(pathogen.name, 1, 1)), 
+    # set file name for the result
+    file.name     <- paste0(settings.database$package, "/", "data/wellDatabase",
+                            toupper(substring(pathogen.name, 1, 1)),
                             substring(pathogen.name, 2),".rda")
     # assign to object name to the object (when the file is loaded later on, it
     # will have this name)
-    assign(object.name, pathogen.data.gen)
+    assign(object.name, pathogen.gen)
     save(list=object.name, file=file.name, compression_level=1)
   }
-  
+
   # load path of genome/kinome aggregate files
   data(settingsDatabase, envir=environment())
-  # search for genome aggregate files  
+  # search for genome aggregate files
   files <- list.files(path=settings.database$gen.aggr, pattern="\\.csv$",
                       full.names=TRUE)
   # if a list of pathogens ist specified, drop the other files
@@ -228,7 +277,7 @@ updateDatabaseWells <- function(pathogens=NULL) {
     matches <- unlist(lapply(pathogens, grep, files, ignore.case=TRUE))
     matches <- unique(matches)
     if(length(matches) < 1) {
-      stop("no pathogens found matching your description.")      
+      stop("no pathogens found matching your description.")
     }
     files <- files[matches]
   }
@@ -236,17 +285,17 @@ updateDatabaseWells <- function(pathogens=NULL) {
   aux <- list.files(path=settings.database$kin.aggr, pattern="\\.csv$",
                       full.names=TRUE)
   if(length(aux) != 1) stop("no supporting kinome data file found")
-  # load kinome aggregate file  
+  # load kinome aggregate file
   kin <- read.table(aux, header = TRUE, sep = ";", fill = TRUE,
                     stringsAsFactors = FALSE, comment.char = "")
   n.cores <- detectCores()
   registerDoMC(cores=n.cores)
-  message("found 1 kinome .csv file:\n", aux, "\nand ", length(files), 
+  message("found 1 kinome .csv file:\n", aux, "\nand ", length(files),
           " genome .csv files; using ", n.cores, " cores.")
   # process the data one pathogen at the time
-  result <- foreach(i=1:length(files)) %doparMC% {
+  result <- foreach(i=1:length(files)) %dopar% {
     processPathogen(files[[i]], kin)
   }
-  message(paste(result$out, collapse="\n"))
+  #message(paste(result$out, collapse="\n"))
   invisible(NULL)
 }

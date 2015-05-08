@@ -57,7 +57,7 @@
 }
 
 #' @export
-saveRDSMC <- function(object, file, threads=detectCores()-2) {
+saveRDSMC <- function(object, file, threads=detectCores()-1) {
   message("using ", threads, " threads for compression.")
   #con <- pipe(paste0("xz -T", threads, " -9 -f > ", file), "wb")
   con <- pipe(paste0("pigz -p ", threads, " -9 -f > ", file), "wb")

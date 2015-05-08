@@ -4,7 +4,8 @@
 \alias{processSingleCellDataPlate}
 \title{Read all single cell features for wells/a plate}
 \usage{
-processSingleCellDataPlate(locations, select = NULL, drop = NULL)
+processSingleCellDataPlate(locations, select = NULL, drop = NULL,
+  images = NULL)
 }
 \arguments{
 \item{locations}{A list of PlateLocation/WellLocation objects for which the
@@ -15,7 +16,10 @@ plate.}
 kept.}
 
 \item{drop}{A vector of strings that are matched with features to be
-                 dropped.}
+dropped.}
+
+\item{images}{A vector of image indices (1:9) indicating which images to
+                 return for each well.}
 }
 \value{
 A list with well/plate data

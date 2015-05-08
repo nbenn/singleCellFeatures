@@ -4,7 +4,7 @@
 \alias{ImageData}
 \title{Constructor for ImageData objects}
 \usage{
-ImageData(barcode, index, vec, mat, lst)
+ImageData(barcode, index, n.img, vec, mat, lst)
 }
 \description{
 Constructor for ImageData objects

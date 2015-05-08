@@ -4,17 +4,17 @@
 \alias{getWellIndex2D}
 \title{Get the 2D index of a well on a 16x24 well plate}
 \usage{
-getWellIndex2D(index, image = FALSE)
+getWellIndex2D(index, n.img = NULL)
 }
 \arguments{
 \item{index}{1D index of a well, either in 1:384 or 1:3456 depending on the
 image setting}
 
-\item{image}{Well (FALSE) or image (TRUE) level resolution}
+\item{n.img}{Well (NULL) or image (6/9) level resolution}
 }
 \value{
-The 2D index of the specified well as a list; if image==FALSE,
-        img=NULL
+The 2D index of the specified well as a list; if image == NULL,
+        img.ind, img.row and img.col = NULL
 }
 \description{
 Given the well index and a logical indication of whether image of well level
@@ -22,6 +22,6 @@ resolution is desired, calculate row, column and possibly image indices
 }
 \examples{
 index <- getWellIndex1D("H", 12, 5)
-well  <- getWellIndex2D(index, TRUE)
+well  <- getWellIndex2D(index, 9)
 }
 

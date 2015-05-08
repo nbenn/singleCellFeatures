@@ -4,20 +4,28 @@
 \alias{getSingleCellData}
 \title{Read all single cell features for wells/plates}
 \usage{
-getSingleCellData(locations, select.features = NULL, drop.features = NULL)
+getSingleCellData(locations, select.features = NULL, drop.features = NULL,
+  select.images = NULL)
 }
 \arguments{
-\item{locations}{A list of PlateLocation/WellLocation objects for which
+\item{locations}{A list of PlateLocation/WellLocation objects for
+which
 the data is to be returned.}
 
 \item{select.features}{A vector of strings that are matched with features to
 be kept.}
 
 \item{drop.features}{A vector of strings that are matched with features to
-                       be dropped.}
+be dropped.}
+
+\item{select.images}{A vector of image indices (1:9) indicating which
+                       images to return for each well.}
 }
 \value{
-A list with well/plate data
+If a single PlateLocation/WellLocation is specified as location
+        input, the corresponding Data object is returned. For a list of
+        PlateLocation/WellLocation objects, a list with well/plate data is
+        returned.
 }
 \description{
 Read all available single cell feature data for multiple wells and/or
@@ -25,7 +33,7 @@ multiple plates.
 }
 \examples{
 plate1 <- PlateLocation("J101-2C")
-mtor   <- findPlateWellsFromGene("MTOR", "brucella-du-k")
+mtor   <- findPlateWellsFromGene("MTOR", "brucella-dp-k[1-3]")
 plate2 <- PlateLocation("J101-2L")
 
 locations <- c(list(plate1, plate2), mtor)

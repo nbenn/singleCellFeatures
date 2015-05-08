@@ -4,9 +4,41 @@
 \alias{PlateData}
 \title{Constructor for PlateData objects}
 \usage{
-PlateData(plate, data)
+PlateData(plate, select = NULL, drop = NULL, data = NULL)
+}
+\arguments{
+\item{plate}{PlateLocation object corresponding to the plate of interest}
+
+\item{select}{A vector of strings that are matched with features to be kept.}
+
+\item{drop}{A vector of strings that are matched with features to be
+              dropped.}
+
+\item{data}{MatData object corresponding to the plate of interest}
+}
+\value{
+A nested list; for structure see examples section
 }
 \description{
-Constructor for PlateData objects
+Given a PlateLocation object, fetch and/or restructure the corresponding
+MatData object into a PlateLocation object.
+}
+\examples{
+plate <- PlateLocation("J101-2C")
+data  <- PlateData(plate)
+
+\dontrun{
+  --> structure of outplut list a PlateData object
+    |--> metadata for plate
+    |--> data (list of 384 WellData objects)
+       |--> A1
+      ...
+       |--> P24
+          |--> metadata for well
+          |--> data (list of 9 ImageData objects)
+             |--> img_11
+            ...
+             |--> img_33
+}
 }
 

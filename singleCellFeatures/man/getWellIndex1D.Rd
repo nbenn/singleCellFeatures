@@ -4,7 +4,7 @@
 \alias{getWellIndex1D}
 \title{Linearize the index of a well on a 16x24 well plate}
 \usage{
-getWellIndex1D(row, col, img = NULL)
+getWellIndex1D(row, col, img = NULL, n.img = 9)
 }
 \arguments{
 \item{row}{Row of the well, specified either by A:P, a:P, or 1:16}

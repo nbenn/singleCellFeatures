@@ -53,6 +53,7 @@ findPlateWellsFromGene <- function(gene, experiment, plates=NULL,
   } else stop("cannot make sense of gene argument (expecting int or char)")
   
   res.tab <- curr.wells[which(curr.wells$Barcode %in% curr.plates$Barcode),]
+  if(nrow(res.tab) == 0) stop("no matching wells found.")
   res.lst <- apply(res.tab, 1, function(row) {
     WellLocation(row[["Barcode"]], row[["WellRow"]], row[["WellColumn"]])
   })
