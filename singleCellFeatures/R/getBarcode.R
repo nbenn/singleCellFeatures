@@ -1,8 +1,8 @@
 #' Get the barcode of a PlateLocation/WellLocation object
 #'
-#' Give a PlateLocation/WellLocation object, return the barcode
+#' Given a PlateLocation/WellLocation object, return the barcode
 #'
-#' @param a PlateLocation/WellLocation object
+#' @param x A Data/DataLocation object
 #' 
 #' @return The barcode of the PlateLocation/WellLocation object (as a string)
 #' 

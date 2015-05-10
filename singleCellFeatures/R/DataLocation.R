@@ -3,7 +3,7 @@
 #' Given a well specification consisting of plate barcode, row and column, an
 #' S3 object of type WellLocation is created
 #'
-#' @param plate A plate barcode as a character string
+#' @param plate A plate barcode as a character string/PlateLocation object
 #' @param row   Row specification (a:p, A:P, or 1:16)
 #' @param col   Column specification (1:24)
 #'
@@ -17,6 +17,9 @@
 WellLocation <- function(plate, row, col) {
   ind <- getWellIndex1D(row, col)
   row <- getWellIndex2D(ind)$wel.row
+  if(any(class(plate) == "PlateLocation")) {
+    plate <- getBarcode(plate)
+  }
   if (!is.character(plate)) stop("plate must be character string")
   data(plateDatabase, envir=environment())
   match <- plate.database[plate.database$Barcode == plate,]

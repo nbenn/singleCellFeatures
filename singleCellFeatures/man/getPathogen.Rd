@@ -7,7 +7,7 @@
 getPathogen(x)
 }
 \arguments{
-\item{a}{PlateLocation/WellLocation object}
+\item{x}{A PlateLocation/WellLocation object}
 }
 \value{
 The pathogen name of the PlateLocation/WellLocation object (as a

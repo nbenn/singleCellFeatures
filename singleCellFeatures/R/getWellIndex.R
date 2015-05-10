@@ -98,6 +98,6 @@ getWellIndex2D <- function(index, n.img=NULL) {
     i.r <- ((img - 1) %/% img.cols) + 1
     i.c <- ((img - 1) %% img.cols)  + 1
   }
-  return(list(wel.row=row, wel.col=col, img.ind <- img,
+  return(list(wel.row=row, wel.col=col, img.ind=img,
               img.row=i.r, img.col=i.c))
 }

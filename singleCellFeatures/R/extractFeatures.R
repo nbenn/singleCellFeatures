@@ -1,10 +1,34 @@
+#' Extract features from Data objects
+#' 
+#' Given a Data object and either a set of regular expressions to select or
+#' discard features or a set of features, return the same object type as the
+#' original, but only with a subset of features.
+#'
+#' @param x        The original Data object, containing the superset of features
+#' @param select   A vector of strings (regular expressions), specifying
+#'                 features to keep
+#' @param drop     A vector of strings (regular expressions), specifying
+#'                 features to drop
+#' @param features For performance reasons, the complete set of features to keep
+#'                 can be determined in advance and specified here (in this
+#'                 case, arguments select/drop will be ignored if not NULL)
+#'
+#' @return A Data object of the same type as x, but only storing a subset of all
+#'         features.
+#'
+#' @examples
+#' features <- c("^Cells.Location_Center_X$",
+#'               "^Cells.Location_Center_Y$")
+#' data <- PlateData(PlateLocation("J101-2C"))
+#' data <- extractFeatures(data, features)
+#' 
 #' @export
-extractFeatures <- function(x, select, drop, features=NULL) {
+extractFeatures <- function(x, select=NULL, drop=NULL, features=NULL) {
   UseMethod("extractFeatures", x)
 }
 
 #' @export
-extractFeatures.MatData <- function(x, select, drop, features=NULL) {
+extractFeatures.MatData <- function(x, select=NULL, drop=NULL, features=NULL) {
   if(is.null(features)) {
     features <- extractFeaturesMatchingHelper(x, select, drop)
   } else if(!is.null(select) | !is.null(drop)) {
@@ -15,7 +39,8 @@ extractFeatures.MatData <- function(x, select, drop, features=NULL) {
 }
 
 #' @export
-extractFeatures.PlateData <- function(x, select, drop, features=NULL) {
+extractFeatures.PlateData <- function(x, select=NULL, drop=NULL,
+                                      features=NULL) {
   if(is.null(features)) {
     features <- extractFeaturesMatchingHelper(x, select, drop)
     select <- NULL
@@ -30,7 +55,7 @@ extractFeatures.PlateData <- function(x, select, drop, features=NULL) {
 }
 
 #' @export
-extractFeatures.WellData <- function(x, select, drop, features=NULL) {
+extractFeatures.WellData <- function(x, select=NULL, drop=NULL, features=NULL) {
   if(is.null(features)) {
     features <- extractFeaturesMatchingHelper(x, select, drop)
     select <- NULL
@@ -45,7 +70,8 @@ extractFeatures.WellData <- function(x, select, drop, features=NULL) {
 }
 
 #' @export
-extractFeatures.ImageData <- function(x, select, drop, features=NULL) {
+extractFeatures.ImageData <- function(x, select=NULL, drop=NULL,
+                                      features=NULL) {
   if(is.null(features)) {
     features <- extractFeaturesMatchingHelper(x, select, drop)
   } else if(!is.null(select) | !is.null(drop)) {
@@ -99,11 +125,10 @@ extractFeatures.ImageData <- function(x, select, drop, features=NULL) {
 }
 
 #' @export
-extractFeatures.default <- function(x, select, drop, features=NULL) {
+extractFeatures.default <- function(x, select=NULL, drop=NULL, features=NULL) {
   stop("can only deal with Data (ImageData/WellData/PlateData) objects.")
 }
 
-#' @export
 extractFeaturesMatchingHelper <- function(x, select, drop) {
   features <- getFeatureNames(x)
   n.feat <- length(features)

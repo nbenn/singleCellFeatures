@@ -7,7 +7,7 @@
 WellLocation(plate, row, col)
 }
 \arguments{
-\item{plate}{A plate barcode as a character string}
+\item{plate}{A plate barcode as a character string/PlateLocation object}
 
 \item{row}{Row specification (a:p, A:P, or 1:16)}
 

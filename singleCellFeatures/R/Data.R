@@ -52,8 +52,10 @@ MatData <- function(plate, force.download=FALSE) {
     stop("can only work with a single PlateLocation object")
   }
   # check if plate is cached
-  if (file.exists(getScRdsCacheFilename(plate))) {
-    data <- readRDSMC(getScRdsCacheFilename(plate))
+  if (file.exists(getCacheFilenameData(plate)) & !force.download) {
+    data <- readRDSMC(getCacheFilenameData(plate))
+    return(structure(list(meta = PlateMetadata(plate),
+                          data = data), class = c("MatData", "Data")))
   } else {
     # plate has to be downloaded/imported
     plate.path <- getLocalPath(plate)
@@ -61,7 +63,7 @@ MatData <- function(plate, force.download=FALSE) {
     # search for matlab files
     filenames <- list.files(path = feature.path, pattern="\\.mat$",
                             full.names=TRUE, recursive=TRUE)
-    if (length(filenames) == 0) {
+    if (length(filenames) == 0 | force.download) {
       # plate has to be downloaded
       message("downloading plate ", getBarcode(plate),
               " from openBIS.")
@@ -94,15 +96,15 @@ MatData <- function(plate, force.download=FALSE) {
     })
 
     message("successfully read ", length(data), " features.")
-    saveRDSMC(data, getScRdsCacheFilename(plate))
+    result <- structure(list(meta = PlateMetadata(plate),
+                             data = data), class = c("MatData", "Data"))
+    saveToCache(result, force.write=force.download)
     unlink(feature.path, recursive=TRUE)
     if (dir.exists(feature.path))
       unlink(feature.path, recursive=TRUE, force=TRUE)
   }
 
-  result <- list(meta = PlateMetadata(plate),
-                 data = data)
-  return(structure(result, class = c("MatData", "Data")))
+  return(result)
 }
 
 #' Constructor for PlateData objects
@@ -123,7 +125,7 @@ MatData <- function(plate, force.download=FALSE) {
 #' data  <- PlateData(plate)
 #'
 #' \dontrun{
-#'   --> structure of outplut list a PlateData object
+#'   --> structure of output
 #'     |--> metadata for plate
 #'     |--> data (list of 384 WellData objects)
 #'        |--> A1
@@ -151,18 +153,7 @@ PlateData <- function(plate, select=NULL, drop=NULL, data=NULL) {
     }
   }
   # determine if wells contain 9 or 6 images
-  lengths <- sapply(data$data, length)
-  max.length <- max(lengths)
-  ful.length <- lengths[lengths == max.length]
-  full.fract <- length(ful.length) / length(lengths)
-  if (max.length > 2304) n.imgs <- 9
-  else if (full.fract > 0.5) n.imgs <- 6
-  else {
-    n.imgs <- 9
-    warning("unsure about the number of images per well.")
-  }
-  message("assuming ", n.imgs, " images per well:\nmax legnth: ", max.length,
-          ", fraction of full length features: ", full.fract)
+  n.imgs <- getNoImgPerWell(data)
   tot.nimgs <- n.imgs * 384
   # check for completenes of single cell data
   pathogen <- getPathogen(plate)
@@ -225,6 +216,23 @@ PlateData <- function(plate, select=NULL, drop=NULL, data=NULL) {
 
   # for each feature, return the total number of objects or 0 if it's a list of
   # lists
+  #   *** caught segfault ***
+  #address 0x0, cause 'unknown'
+  #
+  #Traceback:
+  # 1: lapply(x, length)
+  # 2: unlist(lapply(x, length))
+  # 3: unique(unlist(lapply(x, length)))
+  # 4: simplify2array(answer, higher = (simplify == "array"))
+  # 5: sapply(feature, is.list)
+  # 6: FUN(X[[i]], ...)
+  # 7: lapply(X = X, FUN = FUN, ...)
+  # 8: sapply(data$data, function(feature) {
+  #      leng <- sum(sapply(feature, length))
+  #      list <- any(sapply(feature, is.list))
+  #      return(leng * (!list))
+  #    })
+  # 9: PlateData(PlateLocation("J101-2C"))
   feature.length <- sapply(data$data, function(feature) {
     leng <- sum(sapply(feature, length))
     list <- any(sapply(feature, is.list))
@@ -365,28 +373,107 @@ PlateData <- function(plate, select=NULL, drop=NULL, data=NULL) {
 
 #' Constructor for WellData objects
 #' 
+#' Given a WellLocation object, and a list of ImageData objects, a WellData
+#' object is built up.
+#'
+#' @param well A WellLocation object for the target well
+#' @param data An optional list of ImageData objects corresponding to the
+#'             target well
+#'
+#' @return A WellData object: a list with slots for metadata and data, with the
+#'         data slot holding upt to 9 ImageData objects
+#'
+#' @examples
+#' data <- WellData(WellLocation("J107-2C", "D", 15))
+#' 
+#' \dontrun{
+#'   --> structure of output
+#'     |--> metadata for well
+#'     |--> data (list of 6/9 ImageData objects)
+#'       |--> img_11
+#'      ...
+#'       |--> img_33/32
+#' }
+#'
 #' @export
-WellData <- function(well, data) {
-  result <- list(meta = WellMetadata(well),
-                 data = data)
-  return(structure(result, class = c("WellData", "Data")))
+WellData <- function(well, data=NULL) {
+  if(is.null(data)) {
+    if(file.exists(getCacheFilenameData(well))) {
+      result <- readRDS(getCacheFilenameData(well))
+    } else {
+      data   <- PlateData(convertToPlateLocation(well))
+      result <- extractWells(data, well, FALSE)
+      saveToCache(result)
+    }
+  } else {
+    if(!is.list(data)) stop("expecting a LIST of ImageData objects")
+    if(length(data) < 1 | length(data) > 9) {
+      stop("expecting a list of ImageData objects with length in 1:9")
+    }
+    if(!all(sapply(data, function(x) any(class(x) == "ImageData")))) {
+      stop("expecting a list of IMAGEDATA objects")
+    }
+    result <- structure(list(meta = WellMetadata(well),
+                             data = data), class = c("WellData", "Data"))
+  }
+
+  return(result)
 }
 
 #' Constructor for ImageData objects
 #' 
+#' Due to performance requirements (when a whole plate is imported, 3456
+#' ImageData objects are created), there are two ways this function is executed:
+#' Either the data is supplied (at leas one of vec, mat, lst is not NULL), in
+#' which case barcode is expected to be a string, index the linear plate index
+#' and n.img in c(6, 9), the number of images per well. Nothing is checked to
+#' save time.
+#' If no data is supplied, it is fetched. In this case, barcode is expected to
+#' be a WellLocation object, index the image index inside the well and n.img to
+#' be NULL, as this has already been determined.
+#'
+#' @param barcode Either the barcode of the plate or a WellLocation object
+#'                corresponding to the image's well
+#' @param index   Either the linearized index of the image within the whole
+#'                plate or the image index within the well
+#' @param n.img   Number of images per well (either 6 or 9)
+#' @param vec     All data than contains only a single value per feature
+#' @param mat     All data which consists of a vector of values per feature
+#' @param lst     All data than can only be expressed as a nested list per
+#'                feature
+#'
+#' @return An ImageData object: a list with slots for plate barcode, well
+#'         location within the plate (index and row/col), image location within
+#'         the well (index, row/col), number of images per well and image data
+#'
+#' @examples
+#' data <- ImageData(WellLocation("J107-2C", "D", 15), 5)
+#' 
 #' @export
-ImageData <- function(barcode, index, n.img, vec, mat, lst) {
-  ind <- getWellIndex2D(index, n.img)
-  result <- list(plate       = barcode,
-                 well.index  = index,
-                 well.row    = ind$wel.row,
-                 well.col    = ind$wel.col,
-                 image.index = ind$img.ind,
-                 image.row   = ind$img.row,
-                 image.col   = ind$img.col,
-                 image.total = n.img,
-                 data.vec    = vec,
-                 data.mat    = mat,
-                 data.lst    = lst)
-  return(structure(result, class = c("ImageData", "Data")))
+ImageData <- function(barcode, index, n.img=NULL, vec=NULL, mat=NULL,
+                      lst=NULL) {
+  if(is.null(vec) & is.null(mat) & is.null(lst)) {
+    if(!is.null(n.img)) warning("ignoring parameter n.img")
+    if(!any(class(barcode) == "WellLocation")) {
+      stop("in case no data is supplied, the first argument is expected to ",
+           "be of type WellLocation")
+    }
+    data.wel <- WellData(barcode)
+    data.img <- extractImages(data.wel, index, keep.well=FALSE)
+    return(data.img)
+  } else {
+    ind <- getWellIndex2D(index, n.img)
+    result <- list(plate       = barcode,
+                   well.index  = index,
+                   well.row    = ind$wel.row,
+                   well.col    = ind$wel.col,
+                   image.index = ind$img.ind,
+                   image.row   = ind$img.row,
+                   image.col   = ind$img.col,
+                   image.total = n.img,
+                   data.vec    = vec,
+                   data.mat    = mat,
+                   data.lst    = lst)
+    return(structure(result, class = c("ImageData", "Data")))
+  }
 }

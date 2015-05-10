@@ -7,7 +7,7 @@
 getWellName(x)
 }
 \arguments{
-\item{A}{WellLocation object}
+\item{x}{A WellLocation object}
 }
 \value{
 The well name of the WellLocation object (as a string)

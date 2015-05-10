@@ -149,21 +149,21 @@ processSingleCellDataPlate <- function(locations, select=NULL, drop=NULL,
   # best case: all requested data is cached as well data (cases 1 or 2)
   case <- 0
   if(single) {
-    if(file.exists(getScRdsCacheFilename(locations)) &
+    if(file.exists(getCacheFilenameData(locations)) &
          any(class(locations) == "WellLocation")) case <- 1
   } else {
     isWell <- sapply(locations, function(location) {
       any(class(location) == "WellLocation")
     })
-    if(all(file.exists(sapply(locations, getScRdsCacheFilename))) &
+    if(all(file.exists(sapply(locations, getCacheFilenameData))) &
          all(isWell)) case <- 2
   }
   if(case == 1) {
-    data <- readRDS(getScRdsCacheFilename(locations))
+    data <- readRDS(getCacheFilenameData(locations))
     message("for plate ", getBarcode(current.plate), " the requested well ",
             "was loaded from cache.")
   } else if(case == 2) {
-    data <- lapply(sapply(locations, getScRdsCacheFilename), readRDS)
+    data <- lapply(sapply(locations, getCacheFilenameData), readRDS)
     message("for plate ", getBarcode(current.plate), " all requested data ",
             "was loaded from cached well files.")
   } else {
@@ -173,12 +173,8 @@ processSingleCellDataPlate <- function(locations, select=NULL, drop=NULL,
         # whole plate has to be imported as well caches have to be written
         data <- PlateData(current.plate)
         case <- 3
-        data <- extractWells(data, locations)
-        dir  <- dirname(getScRdsCacheFilename(locations))
-        if(!dir.exists(dir)) dir.create(dir, recursive=TRUE)
-        if(!file.exists(getScRdsCacheFilename(locations))) {
-          saveRDS(data, file=getScRdsCacheFilename(locations), compress="xz")
-        }
+        data <- extractWells(data, well, FALSE)
+        saveToCache(data)
       } else if(any(class(locations) == "PlateLocation")) {
         # plate may only be partially imported (depending on select, drop)
         data <- PlateData(current.plate, select, drop)
@@ -201,13 +197,8 @@ processSingleCellDataPlate <- function(locations, select=NULL, drop=NULL,
         function(location, data) {
           if(any(class(location) == "PlateLocation")) return(data)
           else if (any(class(location) == "WellLocation")) {
-            well.data <- extractWells(data, location)
-            well.dir  <- dirname(getScRdsCacheFilename(location))
-            if(!dir.exists(well.dir)) dir.create(well.dir, recursive=TRUE)
-            if(!file.exists(getScRdsCacheFilename(location))) {
-              saveRDS(well.data, file=getScRdsCacheFilename(location),
-                      compress="xz")
-            }
+            well.data <- extractWells(data, well, FALSE)
+            saveToCache(well.data)
             return(well.data)
           } else stop("can only deal with PlateLocation/WellLocation objects")
         },

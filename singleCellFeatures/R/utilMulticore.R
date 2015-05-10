@@ -30,34 +30,54 @@
 #' res$res
 #' 
 #' @export
-'%doparMC%' <- function(obj, expr) {
+"%doparMC%" <- function(obj, expr) {
   filename <- tempfile()
   con <- fifo(filename, "w+")
-  assign(x='con', value=con, envir=.GlobalEnv)
-  
+  assign(x="con", value=con, envir=.GlobalEnv)
+
   e <- foreach:::getDoPar()
-  result <- e$fun(obj, substitute({
-    warnLevel <- getOption("warn")
-    options(warn=1)
-    sink(file=con, append=TRUE, type="message")
-    on.exit({
-      sink(file=NULL, type="message")
-      options(warn=warnLevel)
-    })
-    res <- eval(expr)
-  }), parent.frame(), e$data)
-  
+  result <- e$fun(
+    obj,
+    substitute({
+      warnLevel <- getOption("warn")
+      options(warn=1)
+      sink(file=con, append=TRUE, type="message")
+      on.exit({
+        sink(file=NULL, type="message")
+        options(warn=warnLevel)
+      })
+      res <- eval(expr)
+    }),
+    parent.frame(), e$data
+  )
+
   output <- readLines(con)
   on.exit({
     unlink(filename)
     close(con)
     rm(con, envir=.GlobalEnv)
   })
-  return(list(res=result, out=output))  
+  return(list(res=result, out=output))
 }
 
+#' A wrapper around saveRDS to enable multicore compression
+#' 
+#' Piping the datastream to be saved through pigz enables the use of multiple
+#' cores for compression.
+#'
+#' @param object  An object to be saved
+#' @param file    The filename of the resulting .rds file
+#' @param threads the number of threads to be used for compression (default:
+#'                all-1)
+#'
+#' @return NULL (invisibly). The object is saved to the filesystem.
+#'
+#' @examples
+#' obj <- list(a=1, b=2)
+#' saveRDSMC(obj, "~/obj.rds")
+#' 
 #' @export
-saveRDSMC <- function(object, file, threads=detectCores()-1) {
+saveRDSMC <- function(object, file, threads=detectCores() - 1) {
   message("using ", threads, " threads for compression.")
   #con <- pipe(paste0("xz -T", threads, " -9 -f > ", file), "wb")
   con <- pipe(paste0("pigz -p ", threads, " -9 -f > ", file), "wb")
@@ -65,11 +85,34 @@ saveRDSMC <- function(object, file, threads=detectCores()-1) {
   on.exit(if(exists("con")) close(con))
 }
 
+#' A wrapper around readRDS for faster reading of compressed files
+#' 
+#' Although decompressing files with pigz is not parallelized, it is faster to
+#' run the decompression in a separate process.
+#'
+#' @param file The file to be read
+#'
+#' @return The object saved as file
+#'
+#' @examples
+#' data <- readRDSMC("~/obj.rds")
+
 #' @export
-readRDSMC <- function(file, threads=detectCores()) {
-  #message("using ", threads, " threads for decompression.")
-  #con <- pipe(paste0("xz -d -k -c -T", threads, " ", file))
+readRDSMC <- function(file) {
+  #con <- pipe(paste0("xz -d -k -c ", file))
   con <- pipe(paste0("pigz -d -k -c ", file))
+  #  *** caught segfault ***
+  # address 0x0, cause 'unknown'
+  #
+  # Traceback:
+  #  1: readRDS(file = con)
+  #  2: readRDSMC(getCacheFilenameData(plate))
+  #  3: MatData(plate)
+  #  4: PlateData(current.plate, select, drop)
+  #  5: FUN(X[[i]], ...)
+  #  6: lapply(plates, processSingleCellDataPlate, select.features,
+  #            drop.features, select.images)
+  #  7: getSingleCellData(plates, features)
   object <- readRDS(file = con)
   on.exit(if(exists("con")) close(con))
   return(object)

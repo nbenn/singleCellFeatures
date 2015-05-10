@@ -2,7 +2,7 @@
 #'
 #' Give a PlateLocation/WellLocation object, return the pathogen name
 #'
-#' @param a PlateLocation/WellLocation object
+#' @param x A PlateLocation/WellLocation object
 #' 
 #' @return The pathogen name of the PlateLocation/WellLocation object (as a
 #'         string)

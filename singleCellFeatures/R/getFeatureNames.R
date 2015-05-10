@@ -1,3 +1,16 @@
+#' List feature names of a Data object
+#'
+#' Given a MatData/PlateData/WellData/ImageData object, list all currently
+#' stored features.
+#'
+#' @param x The MatData/PlateData/WellData/ImageData object of interest
+#' 
+#' @return A list of all currently available features
+#' 
+#' @examples
+#' plate    <- PlateData(PlateLocation("J101-2C"))
+#' features <- getFeatureNames(plate)
+#' 
 #' @export
 getFeatureNames <- function(x) {
   UseMethod("getFeatureNames", x)

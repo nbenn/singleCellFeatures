@@ -4,9 +4,32 @@
 \alias{WellData}
 \title{Constructor for WellData objects}
 \usage{
-WellData(well, data)
+WellData(well, data = NULL)
+}
+\arguments{
+\item{well}{A WellLocation object for the target well}
+
+\item{data}{An optional list of ImageData objects corresponding to the
+            target well}
+}
+\value{
+A WellData object: a list with slots for metadata and data, with the
+        data slot holding upt to 9 ImageData objects
 }
 \description{
-Constructor for WellData objects
+Given a WellLocation object, and a list of ImageData objects, a WellData
+object is built up.
+}
+\examples{
+data <- WellData(WellLocation("J107-2C", "D", 15))
+
+\dontrun{
+  --> structure of output
+    |--> metadata for well
+    |--> data (list of 6/9 ImageData objects)
+      |--> img_11
+     ...
+      |--> img_33/32
+}
 }
 

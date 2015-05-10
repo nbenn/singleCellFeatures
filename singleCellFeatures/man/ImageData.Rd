@@ -4,9 +4,42 @@
 \alias{ImageData}
 \title{Constructor for ImageData objects}
 \usage{
-ImageData(barcode, index, n.img, vec, mat, lst)
+ImageData(barcode, index, n.img = NULL, vec = NULL, mat = NULL,
+  lst = NULL)
+}
+\arguments{
+\item{barcode}{Either the barcode of the plate or a WellLocation object
+corresponding to the image's well}
+
+\item{index}{Either the linearized index of the image within the whole
+plate or the image index within the well}
+
+\item{n.img}{Number of images per well (either 6 or 9)}
+
+\item{vec}{All data than contains only a single value per feature}
+
+\item{mat}{All data which consists of a vector of values per feature}
+
+\item{lst}{All data than can only be expressed as a nested list per
+               feature}
+}
+\value{
+An ImageData object: a list with slots for plate barcode, well
+        location within the plate (index and row/col), image location within
+        the well (index, row/col), number of images per well and image data
 }
 \description{
-Constructor for ImageData objects
+Due to performance requirements (when a whole plate is imported, 3456
+ImageData objects are created), there are two ways this function is executed:
+Either the data is supplied (at leas one of vec, mat, lst is not NULL), in
+which case barcode is expected to be a string, index the linear plate index
+and n.img in c(6, 9), the number of images per well. Nothing is checked to
+save time.
+If no data is supplied, it is fetched. In this case, barcode is expected to
+be a WellLocation object, index the image index inside the well and n.img to
+be NULL, as this has already been determined.
+}
+\examples{
+data <- ImageData(WellLocation("J107-2C", "D", 15), 5)
 }
 

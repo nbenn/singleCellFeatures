@@ -2,7 +2,7 @@
 #'
 #' Given a PlateLocation/WellLocation object, return the local path
 #'
-#' @param a PlateLocation/WellLocation object
+#' @param x A PlateLocation/WellLocation object
 #' 
 #' @return The local path of the PlateLocation/WellLocation object (as a
 #'         string)

@@ -7,7 +7,7 @@
 getOpenBisPath(x)
 }
 \arguments{
-\item{a}{PlateLocation/WellLocation object}
+\item{x}{A PlateLocation/WellLocation object}
 }
 \value{
 The openBIS location path of the PlateLocation/WellLocation object

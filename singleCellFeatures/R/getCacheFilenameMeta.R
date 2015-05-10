@@ -11,23 +11,23 @@
 #' 
 #' @examples
 #' plate <- PlateLocation("J101-2C")
-#' path <- getMetadataCacheFilename(plate)
+#' path <- getCacheFilenameMeta(plate)
 #' 
 #' @export
-getMetadataCacheFilename <- function(x) {
-  UseMethod("getMetadataCacheFilename", x)
+getCacheFilenameMeta <- function(x) {
+  UseMethod("getCacheFilenameMeta", x)
 }
 
 #' @export
-getMetadataCacheFilename.DataLocation <- function(x) {
+getCacheFilenameMeta.DataLocation <- function(x) {
   data(settingsDatabase, envir = environment())
   name <- paste0(x$plate, "_metadata.rds")
-  path <- paste(settings.database$openBIS.data, x$space, x$group, x$experiment, 
+  path <- paste(settings.database$openBIS.data, x$space, x$group, x$experiment,
                 x$plate, name, sep="/")
   return(path)
 }
 
 #' @export
-getMetadataCacheFilename.default <- function(x) {
+getCacheFilenameMeta.default <- function(x) {
   stop("can only deal with DataLocation (PlateLocation/WellLocation) objects.")
 }

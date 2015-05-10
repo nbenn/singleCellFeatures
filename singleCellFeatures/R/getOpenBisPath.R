@@ -2,7 +2,7 @@
 #'
 #' Given a PlateLocation/WellLocation object, return the openBIS location path
 #'
-#' @param a PlateLocation/WellLocation object
+#' @param x A PlateLocation/WellLocation object
 #' 
 #' @return The openBIS location path of the PlateLocation/WellLocation object
 #'         (as a string)

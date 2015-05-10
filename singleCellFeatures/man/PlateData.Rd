@@ -28,7 +28,7 @@ plate <- PlateLocation("J101-2C")
 data  <- PlateData(plate)
 
 \dontrun{
-  --> structure of outplut list a PlateData object
+  --> structure of output
     |--> metadata for plate
     |--> data (list of 384 WellData objects)
        |--> A1

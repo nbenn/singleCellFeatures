@@ -2,7 +2,7 @@
 #'
 #' Given a WellLocation object, return the well name
 #'
-#' @param A WellLocation object
+#' @param x A WellLocation object
 #' 
 #' @return The well name of the WellLocation object (as a string)
 #' 

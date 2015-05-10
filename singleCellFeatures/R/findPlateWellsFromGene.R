@@ -16,7 +16,7 @@
 #'
 #' @examples
 #' set1 <- findPlateWellsFromGene("MTOR", "brucella-du-k")
-#' set2 <- findPlateWellsFromGene(2475, "brucella-du-k")
+#' set2 <- findPlateWellsFromGene(2475, "brucella-au-k[1-3]")
 #' set3 <- findPlateWellsFromGene("SCRAMBLED", "brucella-du-k")
 #'
 #' @export
@@ -26,17 +26,17 @@ findPlateWellsFromGene <- function(gene, experiment, plates=NULL,
   # ensure correct case for pathogen/experiment
   patho.upper <- toupper(unlist(strsplit(experiment, "-"))[1])
   patho.lower <- tolower(patho.upper)
-  patho.camel <- paste0(toupper(substring(patho.lower, 1, 1)), 
+  patho.camel <- paste0(toupper(substring(patho.lower, 1, 1)),
                         substring(patho.lower, 2))
   experiment  <- toupper(experiment)
-  
+
   dataset.name <- paste0("wellDatabase", patho.camel)
   object.name  <- paste0("well.database.", patho.lower)
-  
+
   data(plateDatabase, envir=environment())
   data(list=dataset.name, envir=environment())
   well.database <- get(object.name)
-  
+
   curr.plates <- plate.database[grep(experiment, plate.database$Experiment),]
   if(!is.null(plates)) {
     intersection <- intersect(plates, curr.plates$Barcode)
@@ -46,12 +46,12 @@ findPlateWellsFromGene <- function(gene, experiment, plates=NULL,
     curr.plates <- curr.plates[which(curr.plates$Barcode %in% intersection),]
   }
   if(is.character(gene)) {
-    curr.wells <- well.database[well.database$Name==gene,]
+    curr.wells <- well.database[well.database$Name == gene, ]
   } else if(is.integer(gene) | is.numeric(gene)) {
     gene <- as.integer(gene)
-    curr.wells <- well.database[well.database$ID==gene,]
+    curr.wells <- well.database[well.database$ID == gene, ]
   } else stop("cannot make sense of gene argument (expecting int or char)")
-  
+
   res.tab <- curr.wells[which(curr.wells$Barcode %in% curr.plates$Barcode),]
   if(nrow(res.tab) == 0) stop("no matching wells found.")
   res.lst <- apply(res.tab, 1, function(row) {

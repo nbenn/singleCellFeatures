@@ -28,7 +28,7 @@ the specified gene
 }
 \examples{
 set1 <- findPlateWellsFromGene("MTOR", "brucella-du-k")
-set2 <- findPlateWellsFromGene(2475, "brucella-du-k")
+set2 <- findPlateWellsFromGene(2475, "brucella-au-k[1-3]")
 set3 <- findPlateWellsFromGene("SCRAMBLED", "brucella-du-k")
 }
 
