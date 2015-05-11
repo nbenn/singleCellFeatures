@@ -166,6 +166,8 @@ processSingleCellDataPlate <- function(locations, select=NULL, drop=NULL,
     data <- lapply(sapply(locations, getCacheFilenameData), readRDS)
     message("for plate ", getBarcode(current.plate), " all requested data ",
             "was loaded from cached well files.")
+    lst.names <- sapply(locations, getWellName)
+    names(data) <- lst.names
   } else {
     # not all data is in well caches
     if(single) {
@@ -204,6 +206,13 @@ processSingleCellDataPlate <- function(locations, select=NULL, drop=NULL,
         },
         data
       )
+      lst.names <- sapply(locations, function(loc) {
+        if(any(class(location) == "PlateLocation")) return(getBarcode(loc))
+        else if (any(class(location) == "WellLocation")) {
+          return(getWellName(loc))
+        } else stop("can only deal with PlateLocation/WellLocation objects")
+      })
+      names(data) <- lst.names
     }
   }
   # cases 1 & 2: all data has been read from well caches, features may still
