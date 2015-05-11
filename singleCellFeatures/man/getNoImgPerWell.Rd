@@ -2,21 +2,22 @@
 % Please edit documentation in R/getNoImgPerWell.R
 \name{getNoImgPerWell}
 \alias{getNoImgPerWell}
-\title{Get the barcode of a PlateLocation/WellLocation object}
+\title{Get the number of images per Well}
 \usage{
 getNoImgPerWell(data)
 }
 \arguments{
-\item{data}{A Data/DataLocation object}
+\item{data}{A Data (MatData/ImageData/WellData/PlateData) object}
 }
 \value{
-The barcode of the PlateLocation/WellLocation object (as a string)
+The number of images per well (either 6 or 9).
 }
 \description{
-Given a PlateLocation/WellLocation object, return the barcode
+Given a Data (MatData/ImageData/WellData/PlateData) object, return the number
+of images per well (either 6 or 9).
 }
 \examples{
-plate <- PlateLocation("J101-2C")
-barcode <- getNoImgPerWell(plate)
+plate <- PlateData()PlateLocation("J101-2C"))
+n.img <- getNoImgPerWell(plate)
 }
 

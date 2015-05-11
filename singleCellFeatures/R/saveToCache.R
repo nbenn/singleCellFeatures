@@ -28,6 +28,9 @@ saveToCache.MatData <- function(x, force.write=FALSE) {
   if(!file.exists(file) | force.write) {
     saveRDSMC(x$data, file)
   }
+  # remove outdated well caches
+  dir <- dirname(getCacheFilenameData(WellLocation(getBarcode(loc), "A", 1)))
+  if(dir.exists(dir)) unlink(dir, recursive=TRUE)
   invisible(NULL)
 }
 

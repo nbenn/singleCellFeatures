@@ -23,29 +23,6 @@
 #' 
 #' @export
 MatData <- function(plate, force.download=FALSE) {
-  readFeatureFile <- function(filepath) {
-    data <- tryCatch({
-      # nesting of list contains no information
-      readMat(filepath)[[1]][[1]][[1]][[1]]
-    },
-    error = function(err) {
-      # catch errors s.t. the rest of the batch import can continue
-      warning("an error reading the file", filepath, "occurred:\n", err)
-      return(NULL)
-    })
-    return(data)
-  }
-
-  getFeatureName <- function(filepath) {
-    # extract the filename from the path
-    name <- tail(unlist(strsplit(filepath, "[/]")), n=1)
-    # split into substrings separated by "."
-    name <- unlist(strsplit(name, "[.]"))
-    # remove last substring, hopefully ".mat"
-    name <- name[-length(name)]
-    name <- paste(name, collapse=".")
-    return(name)
-  }
 
   # input validation
   if (!any(class(plate) == "PlateLocation")) {
@@ -54,8 +31,8 @@ MatData <- function(plate, force.download=FALSE) {
   # check if plate is cached
   if (file.exists(getCacheFilenameData(plate)) & !force.download) {
     data <- readRDSMC(getCacheFilenameData(plate))
-    return(structure(list(meta = PlateMetadata(plate),
-                          data = data), class = c("MatData", "Data")))
+    result <- structure(list(meta = PlateMetadata(plate),
+                             data = data), class = c("MatData", "Data"))
   } else {
     # plate has to be downloaded/imported
     plate.path <- getLocalPath(plate)
@@ -80,22 +57,8 @@ MatData <- function(plate, force.download=FALSE) {
       system(bee.command, ignore.stdout = TRUE)
     }
 
-    # list all files ending in .mat below the input dir
-    filenames <- list.files(path = feature.path, pattern="\\.mat$",
-                            full.names=TRUE, recursive=TRUE)
-    if (length(filenames) == 0) stop("no .mat files found.")
-    # get the data
-    message("fetching ", length(filenames), " files")
-    data <- lapply(filenames, readFeatureFile)
-    import.name <- lapply(filenames, getFeatureName)
-    names(data) <- import.name
+    data <- readMatFeatureHelper(feature.path)
 
-    # flatten imported list hierarchy by one unneeded level
-    data <- lapply(data, function(feature) {
-      lapply(feature, function(image) return(image[[1]]))
-    })
-
-    message("successfully read ", length(data), " features.")
     result <- structure(list(meta = PlateMetadata(plate),
                              data = data), class = c("MatData", "Data"))
     saveToCache(result, force.write=force.download)
@@ -104,7 +67,89 @@ MatData <- function(plate, force.download=FALSE) {
       unlink(feature.path, recursive=TRUE, force=TRUE)
   }
 
+  # remove features that have zero length
+  ind.rem <- which(sapply(result$data, function(x) length(x) == 0))
+  if (length(ind.rem) > 0) {
+    message("removing ", length(ind.rem), " features (length == 0):\n",
+            paste(names(result$data)[ind.rem], collapse="\n"))
+    result$data <- result$data[-ind.rem]
+  }
+
+  # check for completenes of single cell data
+  pathogen <- getPathogen(plate)
+  # load feature database
+  data(featureDatabase, envir=environment())
+  feat.exp <- feature.database[[pathogen]]
+  feat.dat <- getFeatureNames(result)
+  if(is.null(feat.exp)) {
+    warning("for ", pathogen, ", currently no feature list is available. ",
+            "Please add one using updateDatabaseFeatures.")
+  }
+  missing <- setdiff(feat.exp, feat.dat)
+  superfl <- setdiff(feat.dat, feat.exp)
+  if(length(missing) > 0) {
+    warning("found ", length(missing), " missing features (", getBarcode(plate),
+            "):\n  ", paste(missing, collapse="\n  "))
+  }
+  if(length(superfl) > 0) {
+    warning("found ", length(superfl), " superfluous features (",
+            getBarcode(plate), "):\n  ", paste(superfl, collapse="\n  "))
+  }
+
   return(result)
+}
+
+#' @export
+readMatFeatureHelper <- function(path) {
+
+  readFeatureFile <- function(filepath) {
+    data <- tryCatch({
+      # nesting of list contains no information
+      readMat(filepath)[[1]][[1]][[1]][[1]]
+    },
+    error = function(err) {
+      # catch errors s.t. the rest of the batch import can continue
+      warning("an error reading the file", filepath, "occurred:\n", err)
+      errfile <- unlist(strsplit(filepath, "/"))
+      errfile[length(errfile)-2] <- "Errors"
+      errfile <- paste0(errfile[-(length(errfile)-1)],
+                       collapse="/")
+      errdir  <- dirname(errfile)
+      if(!dir.exists(errdir)) dir.create(errdir, recursive=TRUE)
+      file.rename(filepath, errfile)
+      return(NULL)
+    })
+    return(data)
+  }
+
+  getFeatureName <- function(filepath) {
+    # extract the filename from the path
+    name <- tail(unlist(strsplit(filepath, "[/]")), n=1)
+    # split into substrings separated by "."
+    name <- unlist(strsplit(name, "[.]"))
+    # remove last substring, hopefully ".mat"
+    name <- name[-length(name)]
+    name <- paste(name, collapse=".")
+    return(name)
+  }
+
+  # list all files ending in .mat below the input dir
+  filenames <- list.files(path=path, pattern="\\.mat$",
+                          full.names=TRUE, recursive=TRUE)
+  if (length(filenames) == 0) stop("no .mat files found.")
+  # get the data
+  message("fetching ", length(filenames), " files")
+  data <- lapply(filenames, readFeatureFile)
+  import.name <- lapply(filenames, getFeatureName)
+  names(data) <- import.name
+
+  # flatten imported list hierarchy by one unneeded level
+  data <- lapply(data, function(feature) {
+    lapply(feature, function(image) return(image[[1]]))
+  })
+
+  message("successfully read ", length(data), " features.")
+  return(data)
 }
 
 #' Constructor for PlateData objects
@@ -155,36 +200,9 @@ PlateData <- function(plate, select=NULL, drop=NULL, data=NULL) {
   # determine if wells contain 9 or 6 images
   n.imgs <- getNoImgPerWell(data)
   tot.nimgs <- n.imgs * 384
-  # check for completenes of single cell data
-  pathogen <- getPathogen(plate)
-  # load feature database
-  data(featureDatabase, envir=environment())
-  feat.exp <- feature.database[[pathogen]]
-  feat.dat <- getFeatureNames(data)
-  if(is.null(feat.exp)) {
-    warning("for ", pathogen, ", currently no feature list is available. ",
-            "Please add one using updateDatabaseFeatures.")
-  }
-  superfl <- setdiff(feat.exp, feat.dat)
-  missing <- setdiff(feat.dat, feat.exp)
-  if(length(missing) > 0) {
-    warning("found ", length(missing), " missing features (", getBarcode(plate),
-            "):\n  ", paste(missing, collapse="\n  "))
-  }
-  if(length(superfl) > 0) {
-    warning("found ", length(superfl), " superfluous features (",
-            getBarcode(plate), "):\n  ", paste(superfl, collapse="\n  "))
-  }
   # remove specified features
   if (!is.null(select) | !is.null(drop)) {
     data <- extractFeatures(data, select, drop)
-  }
-  # remove features that are NULL
-  ind.rem <- which(sapply(data$data, function(x) length(x) == 0))
-  if (length(ind.rem) > 0) {
-    message("removing ", length(ind.rem), " features (length == 0):\n",
-            paste(names(data$data)[ind.rem], collapse="\n"))
-    data$data <- data$data[-ind.rem]
   }
   # remove features contain only 1 entry
   ind.rem <- which(sapply(data$data, function(x) length(x) == 1))
@@ -309,7 +327,7 @@ PlateData <- function(plate, select=NULL, drop=NULL, data=NULL) {
     data$data
   )
 
-  #the following step will need a lot of memory
+  # the following step will need a lot of memory
   gc()
   # tot.nimgs ImageData objects are built from the complete plate data
   data$data <- lapply(
@@ -346,6 +364,8 @@ PlateData <- function(plate, select=NULL, drop=NULL, data=NULL) {
     },
     data$data, getBarcode(plate), n.imgs
   )
+  # free no longer needed memory
+  gc()
 
   # construct a matrix with rows corresponding to all wells
   all.wells  <- cbind(rep(getBarcode(plate), 384),

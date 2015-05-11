@@ -20,7 +20,7 @@ getLocalPath <- function(x) {
 getLocalPath.DataLocation <- function(x) {
   # load file containing some needed paths
   data(settingsDatabase, envir = environment())
-  path <- paste(settings.database$openBIS.data, x$space, x$group, x$experiment, 
+  path <- paste(settings.database$openBIS.data, x$space, x$group, x$experiment,
                 x$plate, sep="/")
   return(path)
 }

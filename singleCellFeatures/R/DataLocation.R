@@ -15,6 +15,7 @@
 #' 
 #' @export
 WellLocation <- function(plate, row, col) {
+  col <- as.integer(col)
   ind <- getWellIndex1D(row, col)
   row <- getWellIndex2D(ind)$wel.row
   if(any(class(plate) == "PlateLocation")) {

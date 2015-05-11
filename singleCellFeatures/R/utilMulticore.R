@@ -113,7 +113,14 @@ readRDSMC <- function(file) {
   #  6: lapply(plates, processSingleCellDataPlate, select.features,
   #            drop.features, select.images)
   #  7: getSingleCellData(plates, features)
-  object <- readRDS(file = con)
-  on.exit(if(exists("con")) close(con))
+  object <- tryCatch({
+    readRDS(file = con)
+  },
+  error = function(err) {
+    stop("could not read file\n", file, ":\n", err)
+  },
+  finally = {
+    if(exists("con")) close(con)
+  })
   return(object)
 }
