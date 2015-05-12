@@ -1,1 +1,8 @@
 all.sublime-workspace
+inst/doc
+# ignore all .delete directories
+**/.delete
+# ignore all caches in vignettes folder
+vignettes/*
+!vignettes/*.Rmd
+!vignettes/*.pdf

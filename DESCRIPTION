@@ -1,10 +1,12 @@
 Package: singleCellFeatures
 Type: Package
-Title: What the package does (short line)
+Title: Analyze single cell features stored in an openBIS instance
 Version: 1.0
 Date: 2015-03-27
-Author: Who wrote it
-Maintainer: Who to complain to <yourfault@somewhere.net>
+Author: Nicolas Bennett
+Maintainer: Nicolas Bennett <nbennett@ethz.ch>
 Depends: foreach, doMC, R.matlab
 Description: More about what it does (maybe more than one line)
 License: What license is it under?
+Suggests: knitr
+VignetteBuilder: knitr

@@ -53,7 +53,8 @@ updateDatabaseSettingsGet <- function() {
 #' @export
 updateDatabaseSettingsSet <- function(old.list, new.list=NULL) {
   # concatenante current settingsDatabase and new key-value list
-  settings.database <- c(old.list, new.list)
+  if(!is.null(new.list)) settings.database <- c(old.list, new.list)
+  else settings.database <- old.list
   save(settings.database,
        file=paste0(settings.database$package, "/", "data/settingsDatabase.rda"),
        compression_level=1)
