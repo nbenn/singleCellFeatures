@@ -34,37 +34,21 @@ MatData <- function(plate, force.download=FALSE) {
     result <- structure(list(meta = PlateMetadata(plate),
                              data = data), class = c("MatData", "Data"))
   } else {
-    # plate has to be downloaded/imported
-    plate.path <- getLocalPath(plate)
-    feature.path <- paste0(plate.path, "/", "HCS_ANALYSIS_CELL_FEATURES_CC_MAT")
-    # search for matlab files
-    filenames <- list.files(path = feature.path, pattern="\\.mat$",
-                            full.names=TRUE, recursive=TRUE)
-    if (length(filenames) == 0 | force.download) {
-      # plate has to be downloaded
-      message("downloading plate ", getBarcode(plate),
-              " from openBIS.")
-      data(settingsDatabase, envir = environment())
-      # get password from file
-      pwd.openBIS <- readRDS(settings.database$openBIS.pwd)
-      bee.command <- paste0(
-        "cd ", settings.database$bee.dir, "; export BEESOFTSRC='",
-        settings.database$bee.softsrc, "'; ./BeeDataSetDownloader.sh ",
-        "--user '", settings.database$openBIS.user, "' --password '",
-        pwd.openBIS, "' --outputdir '", settings.database$openBIS.data,
-        "' --plateid '^", getOpenBisPath(plate), "' --files '.*.mat'",
-        " --verbose '10'")
-      system(bee.command, ignore.stdout = TRUE)
-    }
+    data      <- dowloadFeatureHelper(plate, "cc", force.download)
+    infection <- dowloadFeatureHelper(plate, "dectree", force.download)
 
-    data <- readMatFeatureHelper(feature.path)
+    if(is.null(infection)) {
+      warning("try something other than 'dectree'")
+    } else {
+      names(infection) <- "Cells.Infection_IsInfected"
+      data <- c(data, infection)
+    }
 
     result <- structure(list(meta = PlateMetadata(plate),
                              data = data), class = c("MatData", "Data"))
     saveToCache(result, force.write=force.download)
-    unlink(feature.path, recursive=TRUE)
-    if (dir.exists(feature.path))
-      unlink(feature.path, recursive=TRUE, force=TRUE)
+    dirs <- dir(getLocalPath(plate), "^HCS_ANALYSIS_CELL_", full.names=TRUE)
+    unlink(dirs, recursive=TRUE)
   }
 
   # remove features that have zero length
@@ -88,15 +72,68 @@ MatData <- function(plate, force.download=FALSE) {
   missing <- setdiff(feat.exp, feat.dat)
   superfl <- setdiff(feat.dat, feat.exp)
   if(length(missing) > 0) {
-    warning("found ", length(missing), " missing features (", getBarcode(plate),
-            "):\n  ", paste(missing, collapse="\n  "))
+    warning("detected ", length(missing), " missing feature(s) (",
+            getBarcode(plate), "):\n  ", paste(missing, collapse="\n  "))
   }
   if(length(superfl) > 0) {
-    warning("found ", length(superfl), " superfluous features (",
+    warning("detected ", length(superfl), " superfluous feature(s) (",
             getBarcode(plate), "):\n  ", paste(superfl, collapse="\n  "))
   }
 
   return(result)
+}
+
+#' @export
+dowloadFeatureHelper <- function(plate, type, force.download) {
+  # input validation
+  if (!any(class(plate) == "PlateLocation")) {
+    stop("can only work with a single PlateLocation object")
+  }
+  if (!type %in% c("cc", "dectree")) {
+    stop("unrecognized feature type")
+  }
+  # plate has to be downloaded/imported
+  plate.path <- getLocalPath(plate)
+  if(type == "cc") {
+    feature.path <- paste0(plate.path, "/", "HCS_ANALYSIS_CELL_FEATURES_CC_MAT")
+  } else if(type == "dectree") {
+    feature.path <- paste0(plate.path, "/",
+                           "HCS_ANALYSIS_CELL_DECTREECLASSIFIER_MAT")
+  } else stop("unrecognized feature type")
+  # search for matlab files
+  filenames <- list.files(path = feature.path, pattern="\\.mat$",
+                          full.names=TRUE, recursive=TRUE)
+  if (length(filenames) == 0 | force.download) {
+    # plate has to be downloaded
+    message("downloading '", type, "' for plate ", getBarcode(plate),
+            " from openBIS.")
+    data(settingsDatabase, envir = environment())
+    # get password from file
+    pwd.openBIS <- readRDS(settings.database$openBIS.pwd)
+    bee.command <- paste0(
+      "cd ", settings.database$bee.dir, "; export BEESOFTSRC='",
+      settings.database$bee.softsrc, "'; ./BeeDataSetDownloader.sh ",
+      "--user '", settings.database$openBIS.user, "' --password '",
+      pwd.openBIS, "' --outputdir '", settings.database$openBIS.data,
+      "' --plateid '^", getOpenBisPath(plate), "' --files '.*.mat'",
+      " --verbose '10'")
+    if(type == "dectree") {
+      bee.command <- paste0(bee.command,
+                            " --type 'HCS_ANALYSIS_CELL_DECTREECLASSIFIER_MAT'")
+    }
+    system(bee.command, ignore.stdout = TRUE)
+  }
+  # list all files ending in .mat below the input dir
+  filenames <- list.files(path=plate.path, pattern="\\.mat$",
+                          full.names=TRUE, recursive=TRUE)
+
+  if(type != "cc" & length(filenames) != 1) {
+    warning("no .mat files found.")
+    return(NULL)
+  } else if (length(filenames) == 0) stop("no .mat files found.")
+
+  res <- readMatFeatureHelper(feature.path)
+  return(res)
 }
 
 #' @export

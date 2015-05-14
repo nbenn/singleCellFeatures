@@ -10,8 +10,12 @@ rebuildCache(x, ...)
 \item{x}{MatData object}
 
 \item{location}{An optional argument for the location of the new .mat files.
-                If a failed import attempt is retried, the location argument
-                is not needed.}
+If a failed import attempt is retried, the location argument
+is not needed.}
+
+\item{names}{An optional argument for the name of the newly added feature.
+                If not specified, the filename (without extension) will be
+                used.}
 }
 \value{
 The updated MatData object. The updated cache file is saved to its
@@ -22,7 +26,16 @@ Given an existing MatData cache file and some feature files that were not
 imported correctly, update and save it to the corresponding cache location.
 }
 \examples{
-data <- MatData(PlateLocation("J101-2C"))
-rebuildCache(data)
+# if infection was not included in original download
+plate <- PlateLocation("J104-2C")
+data  <- MatData(plate)
+data  <- rebuildCache(data,
+                      paste0(getLocalPath(plate), "/", "HCS_ANALYSIS_",
+                             "CELL_DECTREECLASSIFIER_MAT"),
+                      "Cells.Infection_IsInfected")
+# if an error ocurred during download
+plate <- PlateLocation("J104-2C")
+data  <- MatData(plate)
+data  <- rebuildCache(data)
 }
 
