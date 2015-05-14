@@ -323,7 +323,6 @@ wellDatabaseCoverage <- function(verbose=FALSE) {
       dataset.name <- paste0("wellDatabase", name)
       object.name  <- paste0("well.database.", tolower(name))
       tryCatch({
-        data(plateDatabase, envir=environment())
         data(list=dataset.name, envir=environment())
         well.db <- get(object.name)
         barcodes <- unique(well.db$Barcode)

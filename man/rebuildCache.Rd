@@ -4,10 +4,14 @@
 \alias{rebuildCache}
 \title{Rebuild cache files for certain Data objects}
 \usage{
-rebuildCache(x)
+rebuildCache(x, ...)
 }
 \arguments{
 \item{x}{MatData object}
+
+\item{location}{An optional argument for the location of the new .mat files.
+                If a failed import attempt is retried, the location argument
+                is not needed.}
 }
 \value{
 The updated MatData object. The updated cache file is saved to its
