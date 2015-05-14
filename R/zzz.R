@@ -1,5 +1,6 @@
 .onLoad <- function(libname, pkgname) {
   options(error=traceback)
+  wellDatabaseCoverage()
   invisible(NULL)
 }
 

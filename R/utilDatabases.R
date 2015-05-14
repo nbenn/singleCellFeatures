@@ -128,62 +128,44 @@ updateDatabaseFeatures <- function(pathogen, features) {
 #' @export
 updateDatabasePlate <- function() {
 
-  processPathogen <- function(path) {
-
-    processPlate <- function(barcode, data) {
-      # extract all data corresponding to the current plate
-      plate <- data[data$Barcode == barcode,]
-      if(nrow(plate) != 384) {
-        warning("incomplete plate (", barcode, "), expected 384 wells but ",
-                "got ", nrow(plate), " wells.")
-      }
-      # get all values of interest and check if they are identical over the
-      # whole plate
-      space <- unique(plate$Space)
-      if(length(space) != 1) {
-        warning("different spaces within plate: ", barcode)
-      }
-      group <- unique(plate$Group)
-      if(length(group) != 1) {
-        warning("different groups within plate: ", barcode)
-      }
-      exper <- unique(plate$Experiment)
-      if(length(exper) != 1) {
-        warning("different experiments within plate: ", barcode)
-      }
-      return(c(barcode, space, group, exper))
-    }
-
-    message("processing ", tail(unlist(strsplit(path, "/")), n=1))
-    # load the genome aggregate file of the current pathogen
-    pathogen <- read.delim(path, as.is=TRUE)
-    # find all plates of the current pathogen and
-    plates <- unique(pathogen$Barcode)
-    # process plates individually
-    result <- sapply(plates, processPlate, pathogen)
-    return(t(result))
-  }
-
-  # load path of genome aggregate files
+  # load HCS_ANALYSIS_CELL_FEATURES_CC_MAT.tsv file
   data(settingsDatabase, envir=environment())
-  # find all genome aggregate files
-  files <- list.files(path=settings.database$gen.aggr, pattern="\\.csv$",
-                      full.names=TRUE)
-  n.cores <- detectCores()
-  registerDoMC(cores=n.cores)
-  message("found ", length(files), " .csv files; using ", n.cores, " cores.")
-  # process each of the files (they are per pathogen)
-  plate.database <- foreach(i=1:length(files), .combine=rbind) %dopar% {
-    processPathogen(files[[i]])
-  }
-  #message(paste(plate.database$out, collapse="\n"))
-  #plate.database <- plate.database$res
-  colnames(plate.database) <- c("Barcode", "Space", "Group", "Experiment")
+  filename <- paste0(settings.database$meta.dir, "/",
+    "HCS_ANALYSIS_CELL_FEATURES_CC_MAT.tsv")
+  all <- read.delim(filename, stringsAsFactors = FALSE)
+  # some datasets occur multiple times per plate
+  all.barco <- unique(all$Sample)
+  # for each unique plate barcode
+  plate.database <- sapply(
+    all.barco,
+    function(x, dat) {
+      hits <- dat[dat$Sample == x, ]
+      # if multiple datasets present, select most recent one for DataID field
+      if(nrow(hits) > 1) {
+        hits <- hits[order(hits$Code, decreasing=TRUE),][1,]
+      }
+      barcode    <- as.character(x)
+      group      <- as.character(hits["Project"])
+      experiment <- as.character(hits["Experiment"])
+      data.id    <- as.character(hits["PermID"])
+      space      <- unlist(strsplit(as.character(hits["Experiment.Identifier"]),
+                                    "/"))
+      if(!all(space[1] == "" & space[3] == group & space[4] == experiment))
+        stop("unexpected formating of Experiment.Identifier column")
+      return(c(barcode, space[2], group, experiment, data.id))
+    },
+    all)
+  plate.database <- t(plate.database)
   plate.database <- as.data.frame(plate.database, stringsAsFactors=FALSE)
+  colnames(plate.database) <- c("Barcode", "Space", "Group", "Experiment",
+    "DataID")
+  plate.database <- plate.database[order(plate.database$Experiment),]
   rownames(plate.database) <- NULL
+
   save(plate.database,
        file=paste0(settings.database$package, "/", "data/plateDatabase.rda"),
        compression_level=1)
+
   invisible(NULL)
 }
 
@@ -298,5 +280,112 @@ updateDatabaseWells <- function(pathogens=NULL) {
     processPathogen(files[[i]], kin)
   }
   #message(paste(result$out, collapse="\n"))
+  invisible(NULL)
+}
+
+#' Assess the coverage provided by available metadata
+#' 
+#' The plate database is compared to all well databases in order to find all 
+#' plates that are missing in well databases. The plate database is assumed
+#' to be complete in the sense that it is generated through a data set search
+#' in openBIS and should therefore include all plates for which single cell
+#' data is available. The well databases however are extracted from aggregates
+#' which only become available periodically.
+#'
+#' @param verbose A verbosity argument, specifying whether to print all plates
+#'                that are missing of just a summary.
+#'
+#' @return NULL, invisibly. All information is printed.
+#'
+#' @examples
+#' wellDatabaseCoverage()
+#' wellDatabaseCoverage(TRUE)
+#' 
+#' @export
+wellDatabaseCoverage <- function(verbose=FALSE) {
+  data(plateDatabase)
+  groups      <- unique(plate.database$Group)
+  experiments <- lapply(
+    groups,
+    function(group, dat) {
+      hits <- dat[dat$Group == group,]
+      return(unique(hits$Experiment))
+    },
+    plate.database
+  )
+  names(experiments) <- groups
+  well.data <- lapply(
+    groups,
+    function(group) {
+      name <- tolower(unlist(strsplit(group, "_"))[1])
+      name <- paste0(toupper(substring(name, 1, 1)),
+        substring(name, 2))
+      dataset.name <- paste0("wellDatabase", name)
+      object.name  <- paste0("well.database.", tolower(name))
+      tryCatch({
+        data(plateDatabase, envir=environment())
+        data(list=dataset.name, envir=environment())
+        well.db <- get(object.name)
+        barcodes <- unique(well.db$Barcode)
+        n.duplic <- data.frame(table(well.db$Barcode))
+        duplic <- n.duplic[n.duplic$Freq != 384,]
+        if(nrow(duplic) > 0) {
+          warning("for ", name, ", some metadata might be incomplete for ",
+                  "plates:\n", paste(duplic[,1], ": ", duplic[,2], " wells",
+                  sep="", collapse="\n"))
+        }
+        return(barcodes)
+      },
+      error = function(err) {
+        warning("no well database found for ", tolower(name))
+        return(NULL)
+      })
+    }
+  )
+  names(well.data) <- groups
+
+  missing <- lapply(
+    groups,
+    function(group, experiments, plate.db, well.db) {
+      res <- lapply(
+        experiments[[group]],
+        function(experiment, plate, well) {
+          res <- setdiff(plate[plate$Experiment == experiment, ]$Barcode, well)
+          if(length(res) > 0) return(res)
+          else return(NULL)
+        },
+        plate.db[plate.db$Group == group,], well.db[[group]]
+      )
+      names(res) <- experiments[[group]]
+      res <- res[!sapply(res, is.null)]
+      return(res)
+    },
+    experiments, plate.database, well.data
+  )
+  names(missing) <- groups
+  message("missing metadata for ", length(unlist(missing)), " plates.\n",
+          "coverage: ", 1 - length(unlist(missing)) / nrow(plate.database))
+  if(verbose) {
+    drop <- lapply(groups, function(group, miss) {
+      plates      <- miss[[group]]
+      experiments <- names(plates)
+      message("for group ", group, ": missing ", length(unlist(plates)),
+              " plates.")
+      drop <- lapply(experiments, function(experiment, barcodes) {
+        bc <- plates[[experiment]]
+        message("  for experiment ", experiment, ", missing ", length(bc),
+                " plates.")
+        bc <- paste("\"", bc, "\"", collapse="  ", sep="")
+        colwidth <- max(nchar(bc))
+        bc.pad <- stri_pad_right(bc, colwidth)
+        str <- paste(bc.pad, collapse="  ", sep="")
+        str <- stri_wrap(str, normalize=FALSE)
+        message("    ", paste(str, collapse="\n    "))
+      }, plates)
+    }, missing)
+  } else {
+    message("run wellDatabaseCoverage(TRUE) to show all plates.")
+  }
+
   invisible(NULL)
 }
