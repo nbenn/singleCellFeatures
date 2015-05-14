@@ -4,13 +4,7 @@
 \alias{updateDatabaseFeatures}
 \title{Update the featureDatabase object}
 \usage{
-updateDatabaseFeatures(pathogen, features)
-}
-\arguments{
-\item{pathogen}{Required parameter specifying the slot (the pathogen) to be
-modified (old list is replaced by new one).}
-
-\item{features}{Required parameter holding the new list to be added.}
+updateDatabaseFeatures()
 }
 \value{
 NULL (invisibly). The updated featureDatabase object saved to the
@@ -18,23 +12,12 @@ NULL (invisibly). The updated featureDatabase object saved to the
         be reloaded.
 }
 \description{
-In order to update the featureDatabase object, the current featureDatabase
-object is fetched and the supplied list is used to replace the list in the
-specified slot.
+In order to update the featureDatabase object, all *.txt files in the folder
+/path/to/meta.dir/FeatureLists are read, processed and the feature
+"Cells.Infection_IsInfected" is added. The filenames determine the list slot
+names, so they should be formatted as PATHOGEN-*.txt.
 }
 \examples{
-# get a mat data set
-dat <- MatData(PlateLocation("KB2-01-1W"))
-# to following lines are only to check if the feature set is complete
-#names <- read.delim(paste0("/", "Users/nbennett/Polybox/MasterThesis/",
-#                           "openBISDownload/INFECTX_PUBLISHED/",
-#                           "BRUCELLA_TEAM/", "BRUCELLA-AU-K1/KB2-01-1W/",
-#                           "filenames.tsv"),
-#                    header=FALSE, sep=" ", stringsAsFactors=FALSE)
-#names <- names[,1]
-#names <- sapply(names, function(x) unlist(strsplit(x, ".mat$")))
-#names[which(!names \%in\% getFeatureNames(dat))]
-# update the table with the featurenames of the fetched/checked data set
-updateDatabaseFeatures("brucella", getFeatureNames(dat))
+updateDatabaseFeatures()
 }
 

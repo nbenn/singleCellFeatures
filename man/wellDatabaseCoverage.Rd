@@ -4,11 +4,14 @@
 \alias{wellDatabaseCoverage}
 \title{Assess the coverage provided by available metadata}
 \usage{
-wellDatabaseCoverage(verbose = FALSE)
+wellDatabaseCoverage(verbose = FALSE, is.startup = FALSE)
 }
 \arguments{
-\item{verbose}{A verbosity argument, specifying whether to print all plates
-               that are missing of just a summary.}
+\item{verbose}{A verbosity argument, specifying whether to print all
+plates that are missing of just a summary.}
+
+\item{is.startup}{Only relevant when this function is used upon package
+                  loading to output via packageStartupMessage.}
 }
 \value{
 NULL, invisibly. All information is printed.

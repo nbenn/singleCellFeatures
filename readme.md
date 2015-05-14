@@ -5,10 +5,10 @@ This R package serves to acquire and analyse single cell feature data as generat
 The easiest way is with help of the devtools package:
 
 ```R
-install.packages('devtools')
+install.packages("devtools")
 library(devtools)
 
-install_github('nbenn/singleCellFeatures')
+install_github("nbenn/singleCellFeatures")
 ```
 
 Alternatively it can be [downloaded](https://github.com/nbenn/singleCellFeatures/archive/master.zip) and installed manually:

@@ -1,6 +1,9 @@
 .onLoad <- function(libname, pkgname) {
   options(error=traceback)
-  wellDatabaseCoverage()
+}
+
+.onAttach <- function(libname, pkgname) {
+  wellDatabaseCoverage(verbose=FALSE, is.startup=TRUE)
   invisible(NULL)
 }
 

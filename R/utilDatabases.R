@@ -62,48 +62,50 @@ updateDatabaseSettingsSet <- function(old.list, new.list=NULL) {
 
 #' Update the featureDatabase object
 #' 
-#' In order to update the featureDatabase object, the current featureDatabase
-#' object is fetched and the supplied list is used to replace the list in the
-#' specified slot.
-#'
-#' @param pathogen Required parameter specifying the slot (the pathogen) to be
-#'                 modified (old list is replaced by new one).
-#' @param features Required parameter holding the new list to be added.
+#' In order to update the featureDatabase object, all *.txt files in the folder 
+#' /path/to/meta.dir/FeatureLists are read, processed and the feature
+#' "Cells.Infection_IsInfected" is added. The filenames determine the list slot
+#' names, so they should be formatted as PATHOGEN-*.txt.
 #'
 #' @return NULL (invisibly). The updated featureDatabase object saved to the
 #'         /data folder. For the new file to be available, the package has to
 #'         be reloaded.
 #'
 #' @examples
-#' # get a mat data set
-#' dat <- MatData(PlateLocation("KB2-01-1W"))
-#' # to following lines are only to check if the feature set is complete
-#' #names <- read.delim(paste0("/", "Users/nbennett/Polybox/MasterThesis/",
-#' #                           "openBISDownload/INFECTX_PUBLISHED/",
-#' #                           "BRUCELLA_TEAM/", "BRUCELLA-AU-K1/KB2-01-1W/",
-#' #                           "filenames.tsv"),
-#' #                    header=FALSE, sep=" ", stringsAsFactors=FALSE)
-#' #names <- names[,1]
-#' #names <- sapply(names, function(x) unlist(strsplit(x, ".mat$")))
-#' #names[which(!names %in% getFeatureNames(dat))]
-#' # update the table with the featurenames of the fetched/checked data set
-#' updateDatabaseFeatures("brucella", getFeatureNames(dat))
+#' updateDatabaseFeatures()
 #' 
 #' @export
-updateDatabaseFeatures <- function(pathogen, features) {
+updateDatabaseFeatures <- function() {
   # load settingsDatabase (for data path)
   data(settingsDatabase, envir=environment())
-  # load current featureDatabase
-  data(featureDatabase, envir=environment())
-  pathogen <- tolower(pathogen)
-  if(!pathogen %in% names(feature.database)) {
-    stop("pathogen has to be one of\n", paste(names(feature.database),
-                                              collapse="\n"))
-  }
-  if(!is.vector(features, mode = "character")) {
-    stop("expecting a vector of characters for features.")
-  }
-  feature.database[[pathogen]] <- features
+  dir <- paste0(settings.database$meta.dir, "/", "FeatureLists")
+  files <- list.files(dir, pattern="\\.txt$", full.names=TRUE)
+  if(length(files) != 10) warning("expecting 10 files, got ", length(files))
+  filenames <- basename(files)
+  filenames <- sapply(filenames, function(x) {
+    tolower(unlist(strsplit(unlist(strsplit(x, "[.]"))[1], "-"))[1])
+  })
+  feature.database <- lapply(files, read.delim, header=FALSE, sep=" ",
+                     stringsAsFactors=FALSE)
+  names(feature.database) <- filenames
+  feature.database <- lapply(feature.database, function(x) {
+    feat <- x[,1]
+    feat <- sapply(feat, function(f) {
+      if(length(grep(".mat$", f)) != 1) {
+        warning("feature ", f, "does not end in .mat")
+      }
+      else f <- unlist(strsplit(f, ".mat"))
+    })
+    names(feat) <- NULL
+    feat <- c(feat, "Cells.Infection_IsInfected")
+    return(feat)
+  })
+
+  lengths <- sapply(feature.database, function(x) length(x))
+  message("successfully read ", length(files), " feature lists:\n", 
+          paste("  using", lengths, "features for", filenames,
+                collapse="\n", sep=" "))
+
   save(feature.database,
        file=paste0(settings.database$package, "/", "data/featureDatabase.rda"),
        compression_level=1)
@@ -292,8 +294,10 @@ updateDatabaseWells <- function(pathogens=NULL) {
 #' data is available. The well databases however are extracted from aggregates
 #' which only become available periodically.
 #'
-#' @param verbose A verbosity argument, specifying whether to print all plates
-#'                that are missing of just a summary.
+#' @param verbose    A verbosity argument, specifying whether to print all
+#'                   plates that are missing of just a summary.
+#' @param is.startup Only relevant when this function is used upon package
+#'                   loading to output via packageStartupMessage.
 #'
 #' @return NULL, invisibly. All information is printed.
 #'
@@ -302,7 +306,7 @@ updateDatabaseWells <- function(pathogens=NULL) {
 #' wellDatabaseCoverage(TRUE)
 #' 
 #' @export
-wellDatabaseCoverage <- function(verbose=FALSE) {
+wellDatabaseCoverage <- function(verbose=FALSE, is.startup=FALSE) {
   data(plateDatabase)
   groups      <- unique(plate.database$Group)
   experiments <- lapply(
@@ -322,23 +326,39 @@ wellDatabaseCoverage <- function(verbose=FALSE) {
         substring(name, 2))
       dataset.name <- paste0("wellDatabase", name)
       object.name  <- paste0("well.database.", tolower(name))
-      tryCatch({
-        data(list=dataset.name, envir=environment())
-        well.db <- get(object.name)
+      suppressWarnings(
+        well.db <- try({
+          data(list=dataset.name, envir=environment())
+          get(object.name)
+        },
+        silent = TRUE)
+      )
+      if(class(well.db) == "try-error") {
+        if(is.startup) {
+          packageStartupMessage("for ", name, ", no well database found")
+        } else {
+          warning("for ", name, ", no well database found", call.=FALSE)
+        }
+        return(NULL)
+      } else {
         barcodes <- unique(well.db$Barcode)
         n.duplic <- data.frame(table(well.db$Barcode))
         duplic <- n.duplic[n.duplic$Freq != 384,]
         if(nrow(duplic) > 0) {
-          warning("for ", name, ", some metadata might be incomplete for ",
-                  "plates:\n", paste(duplic[,1], ": ", duplic[,2], " wells",
-                  sep="", collapse="\n"))
+          if(is.startup) {
+            packageStartupMessage("for ", name, ", some metadata might be ",
+                                  "incomplete for plates:\n",
+                                  paste("  ", duplic[,1], ": ", duplic[,2],
+                                        " wells", sep="", collapse="\n"))
+          } else {
+            warning("for ", name, ", some metadata might be incomplete for ",
+                    "plates:\n", paste("  ", duplic[,1], ": ", duplic[,2],
+                                       " wells", sep="", collapse="\n"),
+                    call.=FALSE)
+          }
         }
         return(barcodes)
-      },
-      error = function(err) {
-        warning("no well database found for ", tolower(name))
-        return(NULL)
-      })
+      }
     }
   )
   names(well.data) <- groups
@@ -362,8 +382,14 @@ wellDatabaseCoverage <- function(verbose=FALSE) {
     experiments, plate.database, well.data
   )
   names(missing) <- groups
-  message("missing metadata for ", length(unlist(missing)), " plates.\n",
-          "coverage: ", 1 - length(unlist(missing)) / nrow(plate.database))
+  if(is.startup) {
+    packageStartupMessage("missing metadata for ", length(unlist(missing)),
+                          " plates.\ncoverage: ",
+                          1 - length(unlist(missing)) / nrow(plate.database))
+  } else {
+    message("missing metadata for ", length(unlist(missing)), " plates.\n",
+            "coverage: ", 1 - length(unlist(missing)) / nrow(plate.database))    
+  }
   if(verbose) {
     drop <- lapply(groups, function(group, miss) {
       plates      <- miss[[group]]
@@ -383,7 +409,12 @@ wellDatabaseCoverage <- function(verbose=FALSE) {
       }, plates)
     }, missing)
   } else {
-    message("run wellDatabaseCoverage(TRUE) to show all plates.")
+    if(is.startup) {
+      packageStartupMessage("run wellDatabaseCoverage(TRUE) to show all ",
+                            "missing plates.")
+    } else {
+      message("run wellDatabaseCoverage(TRUE) to show all missing plates.")
+    }
   }
 
   invisible(NULL)
