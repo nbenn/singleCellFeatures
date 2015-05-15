@@ -2,17 +2,17 @@
 % Please edit documentation in R/utilPackage.R
 \name{reloadSingleCellFeatures}
 \alias{reloadSingleCellFeatures}
-\title{Get directory of the package source}
+\title{Reload the singleCellFeatures package}
 \usage{
 reloadSingleCellFeatures()
 }
 \value{
-The package source directory as a string
+NULL (invisibly).
 }
 \description{
-Returns the directory of the package source
+Detaches and reloads the singleCellFeatures package.
 }
 \examples{
-dir <- getPackageDir()
+reloadSingleCellFeatures()
 }
 

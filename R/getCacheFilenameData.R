@@ -22,9 +22,9 @@ getCacheFilenameData <- function(x) {
 #' @export
 getCacheFilenameData.WellLocation <- function(x) {
   # load file containing some needed paths
-  data(settingsDatabase, envir = environment())
+  config <- configGet()
   name <- paste0(x$plate, "_", x$row, x$col, "_sc_all.rds")
-  path <- paste(settings.database$openBIS.data, x$space, x$group, x$experiment,
+  path <- paste(config$dataStorage$dataDir, x$space, x$group, x$experiment,
                 x$plate, "WellData", name, sep="/")
   return(path)
 }
@@ -32,9 +32,9 @@ getCacheFilenameData.WellLocation <- function(x) {
 #' @export
 getCacheFilenameData.PlateLocation <- function(x) {
   # load file containing some needed paths
-  data(settingsDatabase, envir = environment())
+  config <- configGet()
   name <- paste0(x$plate, "_sc_all.rds")
-  path <- paste(settings.database$openBIS.data, x$space, x$group, x$experiment,
+  path <- paste(config$dataStorage$dataDir, x$space, x$group, x$experiment,
                 x$plate, name, sep="/")
   return(path)
 }

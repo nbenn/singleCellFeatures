@@ -1,65 +1,3 @@
-#' Retrieve the settingsDatabase object 
-#' 
-#' In order to update the settingsDatabase object, this helper function fetches
-#' the current settingsDatabase object for the user to modify and save using
-#' updateDatabaseSettingsSet.
-#'
-#' @return The current settingsDatabase object
-#'
-#' @examples
-#' # load current settingsDatabase
-#' current <- updateDatabaseSettingsGet()
-#' # save updated version
-#' updateDatabaseSettingsSet(current, list(newKey="newValue"))
-#' # using the settingsDatabase object
-#' data(settingsDatabase)
-#' str(settings.database)
-#' # just updating the settingsDatabase object
-#' updateDatabaseSettingsSet(updateDatabaseSettingsGet())
-#' 
-#' @export
-updateDatabaseSettingsGet <- function() {
-  # load current settingsDatabase
-  data(settingsDatabase, envir=environment())
-  return(settings.database)
-}
-
-#' Save the settingsDatabase object
-#' 
-#' In order to update the settingsDatabase object, updateDatabaseSettingsGet
-#' can be used to fetch the current settingsDatabase object, which then can be
-#' modifyed and saved using this function
-#'
-#' @param old.list Required parameter holding the old list/a new version of
-#'                 settingsDatabase with e.g. a key-value pair removed
-#' @param new.list Optional parameter holding one or more key-value pairs as a
-#'                 list which will be appended to old.list
-#'
-#' @return The updated settingsDatabase object which is also saved to the /data
-#'         folder. For the new file to be available, the package has to be re-
-#'         loaded
-#'
-#' @examples
-#' # load current settingsDatabase
-#' current <- updateDatabaseSettingsGet()
-#' # save updated version
-#' updateDatabaseSettingsSet(current, list(newKey="newValue"))
-#' # using the settingsDatabase object
-#' data(settingsDatabase)
-#' str(settings.database)
-#' # just updating the settingsDatabase object
-#' updateDatabaseSettingsSet(updateDatabaseSettingsGet())
-#' 
-#' @export
-updateDatabaseSettingsSet <- function(old.list, new.list=NULL) {
-  # concatenante current settingsDatabase and new key-value list
-  if(!is.null(new.list)) settings.database <- c(old.list, new.list)
-  else settings.database <- old.list
-  save(settings.database,
-       file=paste0(settings.database$package, "/", "data/settingsDatabase.rda"),
-       compression_level=1)
-}
-
 #' Update the featureDatabase object
 #' 
 #' In order to update the featureDatabase object, all *.txt files in the folder 
@@ -76,9 +14,9 @@ updateDatabaseSettingsSet <- function(old.list, new.list=NULL) {
 #' 
 #' @export
 updateDatabaseFeatures <- function() {
-  # load settingsDatabase (for data path)
-  data(settingsDatabase, envir=environment())
-  dir <- paste0(settings.database$meta.dir, "/", "FeatureLists")
+  # load config (for data path)
+  config <- configGet()
+  dir <- paste0(config$dataStorage$metaDir, "/", "FeatureLists")
   files <- list.files(dir, pattern="\\.txt$", full.names=TRUE)
   if(length(files) != 10) warning("expecting 10 files, got ", length(files))
   filenames <- basename(files)
@@ -107,7 +45,8 @@ updateDatabaseFeatures <- function() {
                 collapse="\n", sep=" "))
 
   save(feature.database,
-       file=paste0(settings.database$package, "/", "data/featureDatabase.rda"),
+       file=paste0(config$singleCellFeatures$sourceDir, "/",
+                   "data/featureDatabase.rda"),
        compression_level=1)
 }
 
@@ -131,8 +70,8 @@ updateDatabaseFeatures <- function() {
 updateDatabasePlate <- function() {
 
   # load HCS_ANALYSIS_CELL_FEATURES_CC_MAT.tsv file
-  data(settingsDatabase, envir=environment())
-  filename <- paste0(settings.database$meta.dir, "/",
+  config <- configGet()
+  filename <- paste0(config$dataStorage$metaDir, "/",
     "HCS_ANALYSIS_CELL_FEATURES_CC_MAT.tsv")
   all <- read.delim(filename, stringsAsFactors = FALSE)
   # some datasets occur multiple times per plate
@@ -165,7 +104,8 @@ updateDatabasePlate <- function() {
   rownames(plate.database) <- NULL
 
   save(plate.database,
-       file=paste0(settings.database$package, "/", "data/plateDatabase.rda"),
+       file=paste0(config$singleCellFeatures$sourceDir, "/",
+                   "data/plateDatabase.rda"),
        compression_level=1)
 
   invisible(NULL)
@@ -243,7 +183,8 @@ updateDatabaseWells <- function(pathogens=NULL) {
     # set the name the final object will have
     object.name   <- paste0("well.database.", pathogen.name)
     # set file name for the result
-    file.name     <- paste0(settings.database$package, "/", "data/wellDatabase",
+    file.name     <- paste0(config$singleCellFeatures$sourceDir,
+                            "/", "data/wellDatabase",
                             toupper(substring(pathogen.name, 1, 1)),
                             substring(pathogen.name, 2),".rda")
     # assign to object name to the object (when the file is loaded later on, it
@@ -253,9 +194,9 @@ updateDatabaseWells <- function(pathogens=NULL) {
   }
 
   # load path of genome/kinome aggregate files
-  data(settingsDatabase, envir=environment())
+  config <- configGet()
   # search for genome aggregate files
-  files <- list.files(path=settings.database$gen.aggr, pattern="\\.csv$",
+  files <- list.files(path=config$dataStorage$genome, pattern="\\.csv$",
                       full.names=TRUE)
   # if a list of pathogens ist specified, drop the other files
   if(!is.null(pathogens)) {
@@ -267,7 +208,7 @@ updateDatabaseWells <- function(pathogens=NULL) {
     files <- files[matches]
   }
   # search for kinome aggregate file
-  aux <- list.files(path=settings.database$kin.aggr, pattern="\\.csv$",
+  aux <- list.files(path=config$dataStorage$kinome, pattern="\\.csv$",
                       full.names=TRUE)
   if(length(aux) != 1) stop("no supporting kinome data file found")
   # load kinome aggregate file

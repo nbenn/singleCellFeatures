@@ -20,9 +20,9 @@ getCacheFilenameMeta <- function(x) {
 
 #' @export
 getCacheFilenameMeta.DataLocation <- function(x) {
-  data(settingsDatabase, envir = environment())
+  config <- configGet()
   name <- paste0(x$plate, "_metadata.rds")
-  path <- paste(settings.database$openBIS.data, x$space, x$group, x$experiment,
+  path <- paste(config$dataStorage$dataDir, x$space, x$group, x$experiment,
                 x$plate, name, sep="/")
   return(path)
 }

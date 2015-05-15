@@ -5,7 +5,7 @@ Version: 1.0
 Date: 2015-03-27
 Author: Nicolas Bennett
 Maintainer: Nicolas Bennett <nbennett@ethz.ch>
-Depends: foreach, doMC, stringi, R.matlab
+Depends: foreach, doMC, stringi, yaml, R.matlab
 Description: More about what it does (maybe more than one line)
 License: What license is it under?
 Suggests: knitr

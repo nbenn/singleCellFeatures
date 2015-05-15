@@ -38,7 +38,7 @@ MatData <- function(plate, force.download=FALSE) {
     infection <- dowloadFeatureHelper(plate, "dectree", force.download)
 
     if(is.null(infection)) {
-      warning("try something other than 'dectree'")
+      stop("try something other than 'dectree'")
     } else {
       names(infection) <- "Cells.Infection_IsInfected"
       data <- c(data, infection)
@@ -83,7 +83,6 @@ MatData <- function(plate, force.download=FALSE) {
   return(result)
 }
 
-#' @export
 dowloadFeatureHelper <- function(plate, type, force.download) {
   # input validation
   if (!any(class(plate) == "PlateLocation")) {
@@ -107,14 +106,12 @@ dowloadFeatureHelper <- function(plate, type, force.download) {
     # plate has to be downloaded
     message("downloading '", type, "' for plate ", getBarcode(plate),
             " from openBIS.")
-    data(settingsDatabase, envir = environment())
-    # get password from file
-    pwd.openBIS <- readRDS(settings.database$openBIS.pwd)
+    config <- configGet()
     bee.command <- paste0(
-      "cd ", settings.database$bee.dir, "; export BEESOFTSRC='",
-      settings.database$bee.softsrc, "'; ./BeeDataSetDownloader.sh ",
-      "--user '", settings.database$openBIS.user, "' --password '",
-      pwd.openBIS, "' --outputdir '", settings.database$openBIS.data,
+      "cd ", config$beeDownloader$executable, "; export BEESOFTSRC='",
+      config$beeDownloader$beeSoftsrc, "'; ./BeeDataSetDownloader.sh ",
+      "--user '", config$openBIS$username, "' --password '",
+      config$openBIS$password, "' --outputdir '", config$dataStorage$dataDir,
       "' --plateid '^", getOpenBisPath(plate), "' --files '.*.mat'",
       " --verbose '10'")
     if(type == "dectree") {
@@ -124,11 +121,11 @@ dowloadFeatureHelper <- function(plate, type, force.download) {
     system(bee.command, ignore.stdout = TRUE)
   }
   # list all files ending in .mat below the input dir
-  filenames <- list.files(path=plate.path, pattern="\\.mat$",
+  filenames <- list.files(path=feature.path, pattern="\\.mat$",
                           full.names=TRUE, recursive=TRUE)
 
   if(type != "cc" & length(filenames) != 1) {
-    warning("no .mat files found.")
+    warning("a total of ", length(filenames), " .mat files found. expecting 1.")
     return(NULL)
   } else if (length(filenames) == 0) stop("no .mat files found.")
 
@@ -136,7 +133,6 @@ dowloadFeatureHelper <- function(plate, type, force.download) {
   return(res)
 }
 
-#' @export
 readMatFeatureHelper <- function(path) {
 
   readFeatureFile <- function(filepath) {

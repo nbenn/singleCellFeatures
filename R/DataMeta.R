@@ -133,11 +133,11 @@ PlateAggregate <- function(dl) {
     # figure out pathogen name
     patho.name <- getPathogen(dl)
     # get path info
-    data(settingsDatabase, envir = environment())
+    config <- configGet()
     # get genome and kinome aggreagtes
-    gen.file <- list.files(path=settings.database$gen.aggr, pattern=patho.name,
+    gen.file <- list.files(path=config$dataStorage$genome, pattern=patho.name,
                            ignore.case=TRUE, full.names=TRUE)
-    kin.file <- list.files(path=settings.database$kin.aggr, pattern="\\.csv$",
+    kin.file <- list.files(path=config$dataStorage$kinome, pattern="\\.csv$",
                            full.names=TRUE)
     if (length(gen.file) != 1) {
       stop("found ", length(gen.file), " genome aggregate files instead of 1.")
