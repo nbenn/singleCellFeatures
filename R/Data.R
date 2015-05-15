@@ -58,32 +58,14 @@ MatData <- function(plate, force.download=FALSE) {
             paste(names(result$data)[ind.rem], collapse="\n"))
     result$data <- result$data[-ind.rem]
   }
-
-  # check for completenes of single cell data
-  pathogen <- getPathogen(plate)
-  # load feature database
-  data(featureDatabase, envir=environment())
-  feat.exp <- feature.database[[pathogen]]
-  feat.dat <- getFeatureNames(result)
-  if(is.null(feat.exp)) {
-    warning("for ", pathogen, ", currently no feature list is available. ",
-            "Please add one using updateDatabaseFeatures.")
-  }
-  missing <- setdiff(feat.exp, feat.dat)
-  superfl <- setdiff(feat.dat, feat.exp)
-  if(length(missing) > 0) {
-    warning("detected ", length(missing), " missing feature(s) (",
-            getBarcode(plate), "):\n  ", paste(missing, collapse="\n  "))
-  }
-  if(length(superfl) > 0) {
-    warning("detected ", length(superfl), " superfluous feature(s) (",
-            getBarcode(plate), "):\n  ", paste(superfl, collapse="\n  "))
-  }
+  # check if feature set is complete
+  checkDataCompleteness(result)
 
   return(result)
 }
 
-dowloadFeatureHelper <- function(plate, type, force.download) {
+dowloadFeatureHelper <- function(plate, type, force.download=FALSE,
+                                 features=".*.mat") {
   # input validation
   if (!any(class(plate) == "PlateLocation")) {
     stop("can only work with a single PlateLocation object")
@@ -112,7 +94,7 @@ dowloadFeatureHelper <- function(plate, type, force.download) {
       config$beeDownloader$beeSoftsrc, "'; ./BeeDataSetDownloader.sh ",
       "--user '", config$openBIS$username, "' --password '",
       config$openBIS$password, "' --outputdir '", config$dataStorage$dataDir,
-      "' --plateid '^", getOpenBisPath(plate), "' --files '.*.mat'",
+      "' --plateid '^", getOpenBisPath(plate), "' --files '", features, "'",
       " --verbose '10'")
     if(type == "dectree") {
       bee.command <- paste0(bee.command,

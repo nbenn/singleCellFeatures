@@ -5,27 +5,20 @@
 #'
 #' @param x        MatData object
 #' @param location An optional argument for the location of the new .mat files.
-#'                 If a failed import attempt is retried, the location argument
-#'                 is not needed.
+#'                 If not specified, the /Errors directory is checked and if it
+#'                 does not exist, the missing features are detected and
+#'                 downloaded.
 #' @param names    An optional argument for the name of the newly added feature.
 #'                 If not specified, the filename (without extension) will be
-#'                 used.
+#'                 used. It is ignored when the missing features are detected
+#'                 automatically.
 #' 
 #' @return The updated MatData object. The updated cache file is saved to its
 #'         corresponding location.
 #' 
 #' @examples
-#' # if infection was not included in original download
-#' plate <- PlateLocation("J104-2C")
-#' data  <- MatData(plate)
-#' data  <- rebuildCache(data,
-#'                       paste0(getLocalPath(plate), "/", "HCS_ANALYSIS_",
-#'                              "CELL_DECTREECLASSIFIER_MAT"),
-#'                       "Cells.Infection_IsInfected")
-#' # if an error ocurred during download
-#' plate <- PlateLocation("J104-2C")
-#' data  <- MatData(plate)
-#' data  <- rebuildCache(data)
+#' dat <- MatData(PlateLocation("J110-2C"))
+#' dat <- rebuildCache(dat)
 #'
 #' @export
 rebuildCache <- function(x, ...) {
@@ -35,12 +28,40 @@ rebuildCache <- function(x, ...) {
 #' @export
 rebuildCache.MatData <- function(x, location=NULL, names=NULL) {
   loc  <- convertToPlateLocation(x)
-  if(is.null(location)) {
+  if (is.null(location)) {
     location <- paste0(getLocalPath(loc), "/", "Errors")
   }
-  if(!dir.exists(location)) stop("directory ", location, " not found")
-  data <- readMatFeatureHelper(location)
-  if(!is.null(names)) names(data) <- names
+  if (dir.exists(location)) {
+    message("reading from ", location)
+    data <- readMatFeatureHelper(location)
+    if (!is.null(names)) names(data) <- names
+  } else {
+    suppressWarnings(missing <- checkDataCompleteness(x)$missing)
+    if (length(missing) == 0) {
+      stop("no missing features detected.")
+    }
+    if (length(missing) > 150) {
+      # all missing features are merged into one huge or-linked regexp
+      stop("consider downloading the whole dataset anew.")
+    }
+    message("fetching missing features:\n  ", paste(missing, collapse="\n  "))
+    if ("Cells.Infection_IsInfected" %in% missing) {
+      dat.infect <- dowloadFeatureHelper(loc, "dectree")
+      names(dat.infect) <- "Cells.Infection_IsInfected"
+      missing <- missing[-match("Cells.Infection_IsInfected", missing)]
+    } else {
+      dat.infect <- NULL
+    }
+    if (length(missing) > 0) {
+      regexp <- paste0(".*/(", paste(missing, collapse="|"), ")\\.mat$")
+      dat.rest <- dowloadFeatureHelper(loc, "cc", features=regexp)
+    } else {
+      dat.rest <- NULL
+    }
+    data <- c(dat.infect, dat.rest)
+    dirs <- dir(getLocalPath(loc), "^HCS_ANALYSIS_CELL_", full.names=TRUE)
+    unlink(dirs, recursive=TRUE)
+  }
   x$data <- c(x$data, data)
   x$data <- x$data[order(names(x$data))]
   message("added features:\n  ", paste0(names(data), collapse="\n  "))
