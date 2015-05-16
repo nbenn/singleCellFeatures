@@ -47,7 +47,14 @@ rebuildCache.MatData <- function(x, location=NULL, names=NULL) {
     message("fetching missing features:\n  ", paste(missing, collapse="\n  "))
     if ("Cells.Infection_IsInfected" %in% missing) {
       dat.infect <- dowloadFeatureHelper(loc, "dectree")
-      names(dat.infect) <- "Cells.Infection_IsInfected"
+      if(is.null(dat.infect)) {
+        dat.infect <- dowloadFeatureHelper(loc, "thresholded")
+      }
+      if(is.null(dat.infect)) {
+        stop("try something other than 'dectree'/'thresholded'")
+      } else {
+        names(dat.infect) <- "Cells.Infection_IsInfected"
+      }
       missing <- missing[-match("Cells.Infection_IsInfected", missing)]
     } else {
       dat.infect <- NULL

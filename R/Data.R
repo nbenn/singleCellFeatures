@@ -38,7 +38,10 @@ MatData <- function(plate, force.download=FALSE) {
     infection <- dowloadFeatureHelper(plate, "dectree", force.download)
 
     if(is.null(infection)) {
-      stop("try something other than 'dectree'")
+      infection <- dowloadFeatureHelper(plate, "thresholded", force.download)
+    }
+    if(is.null(infection)) {
+      stop("try something other than 'dectree'/'thresholded'")
     } else {
       names(infection) <- "Cells.Infection_IsInfected"
       data <- c(data, infection)
@@ -70,7 +73,7 @@ dowloadFeatureHelper <- function(plate, type, force.download=FALSE,
   if (!any(class(plate) == "PlateLocation")) {
     stop("can only work with a single PlateLocation object")
   }
-  if (!type %in% c("cc", "dectree")) {
+  if (!type %in% c("cc", "dectree", "thresholded")) {
     stop("unrecognized feature type")
   }
   # plate has to be downloaded/imported
@@ -80,6 +83,9 @@ dowloadFeatureHelper <- function(plate, type, force.download=FALSE,
   } else if(type == "dectree") {
     feature.path <- paste0(plate.path, "/",
                            "HCS_ANALYSIS_CELL_DECTREECLASSIFIER_MAT")
+  } else if(type == "thresholded") {
+    feature.path <- paste0(plate.path, "/",
+                           "HCS_ANALYSIS_CELL_THRESHOLDEDINFECTIONSCORING_MAT")
   } else stop("unrecognized feature type")
   # search for matlab files
   filenames <- list.files(path = feature.path, pattern="\\.mat$",
@@ -99,6 +105,9 @@ dowloadFeatureHelper <- function(plate, type, force.download=FALSE,
     if(type == "dectree") {
       bee.command <- paste0(bee.command,
                             " --type 'HCS_ANALYSIS_CELL_DECTREECLASSIFIER_MAT'")
+    } else if(type == "thresholded") {
+      bee.command <- paste0(bee.command, " --type 'HCS_ANALYSIS_CELL_",
+                            "THRESHOLDEDINFECTIONSCORING_MAT'")
     }
     system(bee.command, ignore.stdout = TRUE)
   }

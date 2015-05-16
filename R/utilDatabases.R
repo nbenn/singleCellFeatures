@@ -248,7 +248,7 @@ updateDatabaseWells <- function(pathogens=NULL) {
 #' 
 #' @export
 wellDatabaseCoverage <- function(verbose=FALSE, is.startup=FALSE) {
-  data(plateDatabase)
+  data(plateDatabase, envir=environment())
   groups      <- unique(plate.database$Group)
   experiments <- lapply(
     groups,

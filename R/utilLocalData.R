@@ -43,7 +43,7 @@ rebuildAllMatDataCaches <- function() {
       TRUE
     },
     error = function(err) {
-      message(err)
+      message(err$message)
       return(FALSE)
     })
   })
