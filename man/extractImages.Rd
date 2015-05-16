@@ -28,6 +28,7 @@ returned.
 }
 \examples{
 plate  <- PlateData(PlateLocation("J101-2C"))
-img_11 <- extractImages(plate, 1)
+img_11    <- extractImages(plate, 1)
+B5.img_12 <- extractImages(plate, 2, WellLocation("J101-2C", "B", 5))
 }
 

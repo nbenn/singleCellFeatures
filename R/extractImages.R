@@ -17,16 +17,27 @@
 #'
 #' @examples
 #' plate  <- PlateData(PlateLocation("J101-2C"))
-#' img_11 <- extractImages(plate, 1)
+#' img_11    <- extractImages(plate, 1)
+#' B5.img_12 <- extractImages(plate, 2, WellLocation("J101-2C", "B", 5))
 #' 
 #' @export
 extractImages <- function(x, images, ...) {
   UseMethod("extractImages", x)
 }
 #' @export
-extractImages.PlateData <- function(x, images) {
-  x$data <- lapply(x$data, extractImages, images, TRUE)
-  return(x)
+extractImages.PlateData <- function(x, images, wells=NULL) {
+  if(is.null(wells)) {
+    x$data <- lapply(x$data, extractImages, images, TRUE)
+    return(x)
+  } else {
+    well.data <- extractWells(x, wells, keep.plate=FALSE)
+    if (any(class(well.data) == "WellData")) {
+      image.data <- extractImages(well.data, images, keep.well=FALSE)
+    } else {
+      image.data <- lapply(well.data, extractImages, images, keep.well=FALSE)
+    }
+    return(image.data)
+  }
 }
 #' @export
 extractImages.WellData <- function(x, images, keep.well=TRUE) {

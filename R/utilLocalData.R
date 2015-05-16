@@ -37,7 +37,7 @@ rebuildAllMatDataCaches <- function() {
   lapply(plates, function(plate) {
     tryCatch({
       message("processing plate ", getBarcode(plate))
-      temp <- MatData(plate)
+      suppressWarnings(temp <- MatData(plate))
       temp <- rebuildCache(temp)
       rm(temp)
       TRUE
