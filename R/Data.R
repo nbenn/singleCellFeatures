@@ -116,7 +116,7 @@ dowloadFeatureHelper <- function(plate, type, force.download=FALSE,
                           full.names=TRUE, recursive=TRUE)
 
   if(type != "cc" & length(filenames) != 1) {
-    warning("a total of ", length(filenames), " .mat files found. expecting 1.")
+    message("a total of ", length(filenames), " .mat files found. expecting 1.")
     return(NULL)
   } else if (length(filenames) == 0) stop("no .mat files found.")
 
@@ -335,59 +335,43 @@ PlateData <- function(plate, select=NULL, drop=NULL, data=NULL) {
   groups <- list(mat=groups.mat,
                  vec=groups.vec,
                  lst=groups.lst)
-  data$data <- lapply(
-    groups,
-    function(group.type, data) {
-      return(lapply(group.type,
-        function(group, data) {
-          return(lapply(group,
-            function(member, data) {
-              return(data[[member]])
-            },
-          data))
-        },
-      data))
-    },
-    data$data
-  )
+  data$data <- lapply(groups, function(group.type, data) {
+    return(lapply(group.type, function(group, data) {
+      return(lapply(group, function(member, data) {
+        return(data[[member]])
+      }, data))
+    }, data))
+  }, data$data)
 
   # the following step will need a lot of memory
   gc()
   # tot.nimgs ImageData objects are built from the complete plate data
-  data$data <- lapply(
-    1:tot.nimgs,
-    function(ind, data, name, n.imgs) {
-      vec <- lapply(data$vec,
-        function(group, ind) {
-          return(unlist(lapply(group,
-            function(feature, i) {
-              return(feature[i])
-            },
-          ind)))
-        },
-      ind)
-      mat <- lapply(data$mat,
-        function(group, ind) {
-          return(vapply(group,
-            function(feature, i) {
-              return(unlist(feature[i]))
-            },
-          double(length(group[[1]][[ind]])), ind))
-        },
-      ind)
-      lst <- lapply(data$lst,
-        function(group, ind) {
-          return(lapply(group,
-            function(feature, i) {
-              return(feature[i])
-            },
-          ind))
-        },
-      ind)
-      return(ImageData(name, ind, n.imgs, vec, mat, lst))
-    },
-    data$data, getBarcode(plate), n.imgs
-  )
+  data$data <- lapply(1:tot.nimgs, function(ind, data, name, n.imgs) {
+    vec <- lapply(data$vec, function(group, ind) {
+      return(unlist(lapply(group, function(feature, i) {
+        return(feature[i])
+      }, ind)))
+    }, ind)
+    mat <- lapply(data$mat, function(group, ind) {
+      n.rows <- length(group[[1]][[ind]])
+      grp <- vapply(group, function(feature, i) {
+        return(unlist(feature[i]))
+      }, double(n.rows), ind)
+      names <- colnames(grp)
+      if(is.null(names)) names <- names(grp)
+      n.cols <- length(names)
+      dim(grp) <- c(n.rows, n.cols)
+      colnames(grp) <- names
+      rownames(grp) <- NULL
+      return(grp)
+    }, ind)
+    lst <- lapply(data$lst, function(group, ind) {
+      return(lapply(group, function(feature, i) {
+        return(feature[i])
+      }, ind))
+    }, ind)
+    return(ImageData(name, ind, n.imgs, vec, mat, lst))
+  }, data$data, getBarcode(plate), n.imgs)
   # free no longer needed memory
   gc()
 
