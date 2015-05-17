@@ -13,6 +13,7 @@
 #' ind1 <- getWellIndex1D("B", 12, NULL)
 #' ind2 <- getWellIndex1D(2, 12, 5)
 #'
+#' @export
 getWellIndex1D <- function(row, col, img=NULL, n.img=9) {
   # input validation
   if(!n.img %in% c(6, 9)) stop("n.img has to be 6 or 9")
@@ -68,6 +69,7 @@ getWellIndex1D <- function(row, col, img=NULL, n.img=9) {
 #' index <- getWellIndex1D("H", 12, 5)
 #' well  <- getWellIndex2D(index, 9)
 #'
+#' @export
 getWellIndex2D <- function(index, n.img=NULL) {
   # input validation
   index <- as.integer(index)

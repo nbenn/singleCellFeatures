@@ -6,39 +6,54 @@
 #' returned or a single ImageData object (or a list of ImageData) objects is/are
 #' returned.
 #'
-#' @param x         The original Data object, holding the superset of images
-#' @param images    A vector of integers, specifying image indices of the images
-#'                  to keep
-#' @param keep.well (Only at WellData level) A boolean indicating whether to keep
-#'                  the WellData object intact or return ImageData object(s)
+#' @param x          The original Data object, holding the superset of images.
+#' @param images     A vector of integers, specifying image indices of the
+#'                   images to keep.
+#' @param keep.well  (Only at WellData level) A boolean indicating whether to
+#'                   keep the WellData object intact or return ImageData
+#'                   object(s).
+#' @param wells      (Only at PlateData level) A list of wells (see 
+#'                   extractWells), to further limit the returned data set.
+#' @param keep.plate (Only at PlateData level) A boolean indicating whether to
+#'                   keep the PlateData object intact or return a (nested) list.
 #'
-#' @return Either a PlateData, WellData or ImageData object holding only the
-#'         data corresponding to the specified subset of images.
+#' @return Either a PlateData, WellData or ImageData object, or a possibly
+#'         nested list, holding only the data corresponding to the specified
+#'         subset of images.
 #'
 #' @examples
 #' plate  <- PlateData(PlateLocation("J101-2C"))
-#' img_11    <- extractImages(plate, 1)
-#' B5.img_12 <- extractImages(plate, 2, WellLocation("J101-2C", "B", 5))
+#' img_11 <- extractImages(plate, 1)
+#' imgs   <- extractImages(plate, c(5, 6), c("A15", "P2"))
 #' 
 #' @export
-extractImages <- function(x, images, ...) {
-  UseMethod("extractImages", x)
+extractImages <- function(...) {
+  UseMethod("extractImages")
 }
+
 #' @export
-extractImages.PlateData <- function(x, images, wells=NULL) {
+extractImages.PlateData <- function(x, images, wells=NULL, keep.plate=TRUE) {
   if(is.null(wells)) {
-    x$data <- lapply(x$data, extractImages, images, TRUE)
-    return(x)
-  } else {
-    well.data <- extractWells(x, wells, keep.plate=FALSE)
-    if (any(class(well.data) == "WellData")) {
-      image.data <- extractImages(well.data, images, keep.well=FALSE)
+    if(keep.plate) {
+      x$data <- lapply(x$data, extractImages, images, TRUE)
+      return(x)
     } else {
-      image.data <- lapply(well.data, extractImages, images, keep.well=FALSE)
+      return(lapply(x$data, extractImages, images, FALSE))
     }
-    return(image.data)
+  } else {
+    well.data <- extractWells(x, wells, keep.plate)
+    if (any(class(well.data) == "PlateData")) {
+      well.data$data <- lapply(well.data$data, extractImages, images, TRUE)
+      res <- well.data
+    } else if (any(class(well.data) == "WellData")) {
+      res <- extractImages(well.data, images, FALSE)
+    } else {
+      res <- lapply(well.data, extractImages, images, FALSE)
+    }
+    return(res)
   }
 }
+
 #' @export
 extractImages.WellData <- function(x, images, keep.well=TRUE) {
   n.img <- x$data[[1]]$image.total
@@ -55,7 +70,8 @@ extractImages.WellData <- function(x, images, keep.well=TRUE) {
     return(x)
   }
 }
+
 #' @export
-extractImages.default <- function(x, images) {
-  stop("can only deal with WellData/PlateData objects.")
+extractImages.default <- function(x, ...) {
+  stop("can only deal with WellData/PlateData objects,\nnot with ", class(x))
 }

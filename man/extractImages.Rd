@@ -4,20 +4,28 @@
 \alias{extractImages}
 \title{Extract data for images from Data objects}
 \usage{
-extractImages(x, images, ...)
+extractImages(...)
 }
 \arguments{
-\item{x}{The original Data object, holding the superset of images}
+\item{x}{The original Data object, holding the superset of images.}
 
-\item{images}{A vector of integers, specifying image indices of the images
-to keep}
+\item{images}{A vector of integers, specifying image indices of the
+images to keep.}
 
-\item{keep.well}{(Only at WellData level) A boolean indicating whether to keep
-                 the WellData object intact or return ImageData object(s)}
+\item{keep.well}{(Only at WellData level) A boolean indicating whether to
+keep the WellData object intact or return ImageData
+object(s).}
+
+\item{wells}{(Only at PlateData level) A list of wells (see
+extractWells), to further limit the returned data set.}
+
+\item{keep.plate}{(Only at PlateData level) A boolean indicating whether to
+                  keep the PlateData object intact or return a (nested) list.}
 }
 \value{
-Either a PlateData, WellData or ImageData object holding only the
-        data corresponding to the specified subset of images.
+Either a PlateData, WellData or ImageData object, or a possibly
+        nested list, holding only the data corresponding to the specified
+        subset of images.
 }
 \description{
 Given a Data object and a vector of image indices (either in 1:6 or in 1:9)
@@ -28,7 +36,7 @@ returned.
 }
 \examples{
 plate  <- PlateData(PlateLocation("J101-2C"))
-img_11    <- extractImages(plate, 1)
-B5.img_12 <- extractImages(plate, 2, WellLocation("J101-2C", "B", 5))
+img_11 <- extractImages(plate, 1)
+imgs   <- extractImages(plate, c(5, 6), c("A15", "P2"))
 }
 

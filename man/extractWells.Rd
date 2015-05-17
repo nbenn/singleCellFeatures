@@ -4,14 +4,16 @@
 \alias{extractWells}
 \title{Extract WellData objects form a PlateData object}
 \usage{
-extractWells(x, wells, keep.plate = TRUE)
+extractWells(x, ...)
 }
 \arguments{
 \item{x}{The original PlateData object, holding the superset of
 wells}
 
-\item{wells}{A single WellLocation object/a list of WellLocation objects
-specifying the targets}
+\item{wells}{A single WellLocation object/a list of WellLocation
+objects, a single integer/vector of integers (in 1:384),
+or a single string/vector of strings (e.g. A5) specifying
+the targets.}
 
 \item{keep.plate}{A boolean indicating whether to keep the PlateData object
                   intact or return WellData object(s)}
@@ -27,6 +29,7 @@ specified subset of wells or a single WellData/a list of WellData objects.
 }
 \examples{
 plate  <- PlateData(PlateLocation("J101-2C"))
-a23 <- extractWells(plate, WellLocation("J101-2C", "A", 23), FALSE)
+a23 <- extractWells(plate, "A23", FALSE)
+wells <- extractWells(plate, c(135, 155))
 }
 

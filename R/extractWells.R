@@ -6,8 +6,10 @@
 #'
 #' @param x          The original PlateData object, holding the superset of
 #'                   wells
-#' @param wells      A single WellLocation object/a list of WellLocation objects
-#'                   specifying the targets
+#' @param wells      A single WellLocation object/a list of WellLocation
+#'                   objects, a single integer/vector of integers (in 1:384),
+#'                   or a single string/vector of strings (e.g. A5) specifying
+#'                   the targets.
 #' @param keep.plate A boolean indicating whether to keep the PlateData object
 #'                   intact or return WellData object(s)
 #'
@@ -16,21 +18,38 @@
 #'
 #' @examples
 #' plate  <- PlateData(PlateLocation("J101-2C"))
-#' a23 <- extractWells(plate, WellLocation("J101-2C", "A", 23), FALSE)
-#' 
+#' a23 <- extractWells(plate, "A23", FALSE)
+#' wells <- extractWells(plate, c(135, 155))
+#'
 #' @export
-extractWells <- function(x, wells, keep.plate=TRUE) {
+extractWells <- function(x, ...) {
   UseMethod("extractWells", x)
 }
 #' @export
 extractWells.PlateData <- function(x, wells, keep.plate=TRUE) {
-  if(any(class(wells) == "WellLocation")) wells <- list(wells)
-  if(!all(sapply(
-    wells,
-    function(well) {
+  if(any(class(wells) == "WellLocation")) {
+    wells <- list(wells)
+  } else if(is.numeric(wells)) {
+    wells <- unique(wells)
+    wells <- lapply(wells, function(well) {
+      bc <- getBarcode(x)
+      ind <- getWellIndex2D(well)
+      return(WellLocation(bc, ind$wel.row, ind$wel.col))
+    })
+  } else if(is.character(wells)) {
+    wells <- unique(wells)
+    wells <- lapply(wells, function(well) {
+      bc <- getBarcode(x)
+      row <- substr(well, 1, 1)
+      col <- substring(well, 2)
+      return(WellLocation(bc, row, col))
+    })
+  }
+
+  if(!all(sapply(wells, function(well) {
       return(any(class(well) == "WellLocation"))
-    }
-  ))) stop("can only work with a list of WellLocation objects")
+  }))) stop("can only work with a list of WellLocation objects")
+
   barcodes <- sapply(wells, getBarcode)
   if(length(unique(barcodes)) != 1)
     stop("can only deal with WellLocations on the same plate")
@@ -47,6 +66,6 @@ extractWells.PlateData <- function(x, wells, keep.plate=TRUE) {
   }
 }
 #' @export
-extractWells.default <- function(x, wells, keep.plate=TRUE) {
+extractWells.default <- function(x, ...) {
   stop("can only deal with PlateData objects.")
 }
