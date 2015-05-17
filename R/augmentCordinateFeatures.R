@@ -153,7 +153,7 @@ augmentCordinateFeatures.ImageData <- function(x, ellipse=NULL, facet=NULL,
     }
     if(center.dist) {
       message("including distance to image center.")
-      test <- lapply(img1$data.mat, function(group) {
+      x$data.mat <- lapply(x$data.mat, function(group) {
         index.x <- grep("Location_Center_X", colnames(group))
         index.y <- grep("Location_Center_Y", colnames(group))
         if(length(index.x) != length(index.y)) {
