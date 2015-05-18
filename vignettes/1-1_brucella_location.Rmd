@@ -1,58 +1,263 @@
 ---
-title: "Vignette Title"
-author: "Vignette Author"
+title: "1.1 Brucella Locations (J101-2C)"
+author: "Nicolas Bennett"
 date: "`r Sys.Date()`"
-output: rmarkdown::pdf_document
+output: 
+  rmarkdown::pdf_document:
+    fig_width: 14
+    fig_height: 10
 vignette: >
   %\VignetteIndexEntry{1.1 Brucella Locations (J101-2C)}
   %\VignetteEngine{knitr::rmarkdown}
   %\VignetteEncoding{UTF-8}
 ---
 
-Vignettes are long form documentation commonly included in packages. Because they are part of the distribution of the package, they need to be as compact as possible. The `html_vignette` output type provides a custom style sheet (and tweaks some options) to ensure that the resulting html is as small as possible. The `html_vignette` format:
-
-- Never uses retina figures
-- Has a smaller default figure size
-- Uses a custom CSS stylesheet instead of the default Twitter Bootstrap style
-
-## Vignette Info
-
-Note the various macros within the `vignette` setion of the metadata block above. These are required in order to instruct R how to build the vignette. Note that you should change the `title` field and the `\VignetteIndexEntry` to match the title of your vignette.
-
-## Styles
-
-The `html_vignette` template includes a basic CSS theme. To override this theme you can specify your own CSS in the document metadata as follows:
-
-    output: 
-      rmarkdown::html_vignette:
-        css: mystyles.css
-
-## Figures
-
-The figure sizes have been customised so that you can easily put two images side-by-side. 
-
-```{r, fig.show='hold'}
-plot(1:10)
-plot(10:1)
+```{r, setup, echo=FALSE}
+suppressPackageStartupMessages(library(singleCellFeatures))
+suppressPackageStartupMessages(library(ggplot2))
+suppressPackageStartupMessages(library(RColorBrewer))
+suppressPackageStartupMessages(library(gridExtra))
+suppressPackageStartupMessages(library(scales))
+options(scipen = 1, digits = 2)
 ```
 
-You can enable figure captions by `fig_caption: yes` in YAML:
+The following investigation should shed a light on the quesion whether the location of an object (such as a cell) within an image or well has an influence on its features. If such an influence is visible, it may have to be considered to remove some objects (e.g. in image or well corners) or possibly even entire images (out of 9 image wells, maybe only the center image is usable).
 
-    output:
-      rmarkdown::html_vignette:
-        fig_caption: yes
+```{r, loadData, cache=TRUE}
+features <- c("^Cells.Location_Center_X$",
+              "^Cells.Location_Center_Y$",
+              "^Cells.AreaShape_Area$",
+              "^Cells.AreaShape_Perimeter$",
+              "^Cells.Texture_Contrast_CorrDNA_3$",
+              "^Cells.Texture_Contrast_CorrActin_3$",
+              "^Cells.Texture_Entropy_CorrDNA_3$",
+              "^Cells.Intensity_MeanIntensity_CorrActin$",
+              "^Cells.Intensity_IntegratedIntensity_CorrPathogen$")
+plate <- PlateLocation("J101-2C")
+data  <- PlateData(plate, features)
+augm <- augmentCordinateFeatures(data, ellipse=1, facet=c(14, 10),
+                                 center.dist=TRUE)
+augm <- augmentImageLocation(augm)
+melt <- meltData(augm)
+cells <- melt$Cells
+colnames(cells)
+rm(features, data, augm, melt)
+```
+                 
+A subset of the cell features for the plate `r getBarcode(plate)` (`r plate$experiment`) is loaded. The data is augmented with additional features: `augmentCordinateFeatures` is capable to add membership to concentric ellipses and tiles, as well as distance to image center for any kind of `Location_Center` features, while `augmentImageLocation` adds information on where the image is located within a well. FInally the data is *melted* into a single `data.frame`.
 
-Then you can use the chunk option `fig.cap = "Your figure caption."` in **knitr**.
-
-## More Examples
-
-You can write math expressions, e.g. $Y = X\beta + \epsilon$, footnotes^[A footnote here.], and tables, e.g. using `knitr::kable()`.
-
-```{r, echo=FALSE, cache=TRUE, results='asis'}
-knitr::kable(head(mtcars, 10))
+```{r scatterPlot, echo=FALSE}
+set.seed(7)
+thin <- sample.int(nrow(cells), nrow(cells)/20)
+breaks <- c(500, 5000, 50000)
+ggplot(cells[thin,], aes(x=Cells.Location_Shifted_X, 
+                         y=Cells.Location_Shifted_Y)) +
+  geom_point(aes(colour=Cells.AreaShape_Area)) +
+  scale_colour_gradientn(colours=brewer.pal(9, "YlGnBu"),
+    breaks=breaks, labels=format(breaks), trans="log",
+    guide=guide_colourbar(title="Cell area", barwidth=25, barheight=2)) +
+  theme_bw(base_size = 18) + 
+  theme(legend.position="bottom", axis.title=element_blank(),
+        axis.text=element_blank(), axis.ticks=element_blank()) +
+  ggtitle("Cell location and cell size")
 ```
 
-Also a quote using `>`:
+A first visualization approach: a scatterplot for cell center location with color values for cell size. Cell size varies from $`r min(cells$Cells.AreaShape_Area)`$ to $`r max(cells$Cells.AreaShape_Area)`$ with $\mu = `r mean(cells$Cells.AreaShape_Area)`$ and $\sigma = `r sd(cells$Cells.AreaShape_Area)`$. The color scale is logarithmic to achieve sensitivity at lower values while still showing the largest cells. There are $`r nrow(cells)`$ datapoints and because of overlapping, only a randomly chosen subset of length $`r floor(nrow(cells)/20)`$ is plotted.
 
-> "He who gives up [code] safety for [code] speed deserves neither."
-([via](https://twitter.com/hadleywickham/status/504368538874703872))
+For the next set of visualizations, for each cell, the distance (of the cell center) from the image center is plotted against the cell perimeter for the images in the upper left corner and the center of the well. Due to the large sample size (`r sum(cells$Image.Index==1)` for upper right, `r sum(cells$Image.Index==2)` for upper middle, `r sum(cells$Image.Index==5)` for middle and `r sum(cells$Image.Index==6)` for middle right), the scatterplots are 2D-binned.
+
+
+```{r, radiusBin2D, echo=FALSE, fig.height=10}
+grid_arrange_shared_legend <- function(...) {
+    plots <- list(...)
+    g <- ggplotGrob(plots[[1]] + theme(legend.position="bottom"))$grobs
+    legend <- g[[which(sapply(g, function(x) x$name) == "guide-box")]]
+    lheight <- sum(legend$height)
+    grid.arrange(
+        do.call(arrangeGrob, lapply(plots, function(x)
+            x + theme(legend.position="none"))),
+        legend,
+        ncol = 1,
+        heights = unit.c(unit(1, "npc") - lheight, lheight))
+}
+p1 <- ggplot(cells[cells$Image.Index==1,], 
+             aes(x=Cells.Location_Dist_Center, y=Cells.AreaShape_Perimeter)) +
+  geom_bin2d() +
+  scale_fill_gradientn(colours=brewer.pal(5, "Oranges"),
+                       guide=guide_colourbar(title="Cell count", barwidth=25, 
+                                             barheight=2),
+                       limits=c(1,3500)) +
+  theme_bw(base_size = 18) + 
+  theme(legend.position="bottom") +
+  ylim(0, 5000) + xlim(0, 800) +
+  ylab("Cell perimeter") +
+  ggtitle("Upper left")
+p2 <- ggplot(cells[cells$Image.Index==2,], 
+             aes(x=Cells.Location_Dist_Center, y=Cells.AreaShape_Perimeter)) +
+  geom_bin2d() +
+  scale_fill_gradientn(colours=brewer.pal(5, "Oranges"),
+                       guide=guide_colourbar(title="Cell count", barwidth=25, 
+                                             barheight=2),
+                       limits=c(1,3500)) +  theme_bw(base_size = 18) + 
+  theme(legend.position="bottom") +
+  ylim(0, 5000) + xlim(0, 800) +
+  ggtitle("Upper middle")
+p3 <- ggplot(cells[cells$Image.Index==5,], 
+             aes(x=Cells.Location_Dist_Center, y=Cells.AreaShape_Perimeter)) +
+  geom_bin2d() +
+  scale_fill_gradientn(colours=brewer.pal(5, "Oranges"),
+                       guide=guide_colourbar(title="Cell count", barwidth=25, 
+                                             barheight=2),
+                       limits=c(1,3500)) +  theme_bw(base_size = 18) + 
+  theme(legend.position="bottom") +
+  ylim(0, 5000) + xlim(0, 800) +
+  ylab("Cell perimeter") + xlab("Cell center to image center distance") +
+  ggtitle("Middle middle")
+p4 <- ggplot(cells[cells$Image.Index==6,], 
+             aes(x=Cells.Location_Dist_Center, y=Cells.AreaShape_Perimeter)) +
+  geom_bin2d() +
+  scale_fill_gradientn(colours=brewer.pal(5, "Oranges"),
+                       guide=guide_colourbar(title="Cell count", barwidth=25, 
+                                             barheight=2),
+                       limits=c(1,3500)) +  theme_bw(base_size = 18) + 
+  theme(legend.position="bottom") +
+  ylim(0, 5000) + xlim(0, 800) +
+  xlab("Cell center to image center distance") +
+  ggtitle("Middle right")
+grid_arrange_shared_legend(p1, p2, p3, p4)
+```
+
+The feature `Cells.Texture_Contrast_CorrActin_3` is visualized in the following three plots. Trends for how the feature depends on image center to cell center distance are plotted for all nine images (image 1: upper left, image 2: upper middle, etc.) While a clear, approximately linear trend moving outwards is visible, the slopes are small. This is especially visible in the third plot, showing only the trend for image 1 but while keeping the datapoints visible (only a randonly selected subset of 1/10 of the datapoints are shown). The histrogram shows how the contrast values are distributed (whole plate).
+
+```{r, radiusTrend, echo=FALSE, fig.height=6}
+legend.order <- c("1","4","7","2","5","8","3","6","9")
+ggplot(cells, aes(x=Cells.Location_Dist_Center, 
+                  y=Cells.Texture_Contrast_CorrActin_3,
+                  color=factor(Image.Index),
+                  group=Image.Index)) +
+  scale_colour_brewer(palette="Set1",
+                      breaks=legend.order,
+                      guide=guide_legend(title="Image number", nrow=3, 
+                                         keywidth = 3, keyheight = 1),
+                      labels=paste("Image", legend.order)) +
+  theme_bw(base_size = 18) + 
+  stat_smooth(method="gam") +
+  scale_y_continuous(label=scientific_format()) +
+  theme(legend.position="bottom") +
+  xlab("Cell center to image center distance") + 
+  ylab("Contrast CorrActin for cells")
+ggplot(cells, aes(x=Cells.Texture_Contrast_CorrActin_3)) +
+  geom_histogram(binwidth=0.1) +
+  theme_bw(base_size = 18) + 
+  scale_y_continuous(label=scientific_format()) +
+  xlim(0, 4) +
+  xlab("Contrast CorrActin for cells")
+index <- which(cells$Image.Index==1)
+thin2 <- sample(index, length(index)/10)
+ggplot(cells[thin2,], 
+             aes(x=Cells.Location_Dist_Center,
+                 y=Cells.Texture_Contrast_CorrActin_3)) +
+  geom_point(aes(alpha = 0.9)) +
+  guides(alpha=FALSE) +
+  stat_smooth(method="gam",colour="red") +
+  theme_bw(base_size = 18) +
+  scale_y_continuous(label=scientific_format()) +
+  xlab("Cell center to image center distance") + 
+  ylab("Contrast CorrActin for cells")
+```
+
+The following 4 histograms show how the feature `Cells.Texture_Entropy_CorrDNA_3` is distributed in four of the nine images (fig. a shows the upper left image, fig. b, the central image, fig. c the rightmost image in the middle row and fig. d, the middle image in the bottom row).
+
+```{r, imageHist, echo=FALSE, fig.height=14}
+p5 <- ggplot(cells[cells$Image.Index==1,],
+             aes(x=Cells.Texture_Entropy_CorrDNA_3)) +
+  geom_histogram(binwidth=0.1) +
+  theme_bw(base_size = 18) + 
+  xlim(0, 5) + ylim(0, 9000) +
+  xlab("Entropy CorrDNA for cells") +
+  ggtitle("Upper left")
+p6 <- ggplot(cells[cells$Image.Index==5,],
+             aes(x=Cells.Texture_Entropy_CorrDNA_3)) +
+  geom_histogram(binwidth=0.1) +
+  theme_bw(base_size = 18) + 
+  xlim(0, 5) + ylim(0, 9000) +
+  xlab("Entropy CorrDNA for cells") +
+  ggtitle("Middle middle")
+p7 <- ggplot(cells[cells$Image.Index==6,],
+             aes(x=Cells.Texture_Entropy_CorrDNA_3)) +
+  geom_histogram(binwidth=0.1) +
+  theme_bw(base_size = 18) + 
+  xlim(0, 5) + ylim(0, 9000) +
+  xlab("Entropy CorrDNA for cells") +
+  ggtitle("Middle right")
+p8 <- ggplot(cells[cells$Image.Index==8,],
+             aes(x=Cells.Texture_Entropy_CorrDNA_3)) +
+  geom_histogram(binwidth=0.1) +
+  theme_bw(base_size = 18) + 
+  xlim(0, 5) + ylim(0, 9000) +
+  xlab("Entropy CorrDNA for cells") +
+  ggtitle("Lower middle")
+grid.arrange(p5, p6, p7, p8, nrow = 2)
+```
+
+To compare feature distribution among different images, density estimated are plottes in the following two images. First, for visual clarity, the nine images are grouped according to well border length: images 1, 3, 7 and 9 are corer images, while images 2, 4, 6 and 8 have a well border along one side. Image 5 is located in the well center.
+
+```{r, imgDens, echo=FALSE, warning=FALSE, fig.height=7}
+r <- brewer.pal(8, "Reds")
+g <- brewer.pal(8, "Greens")
+b <- brewer.pal(8, "Blues")
+legend.order <- c("1","4","7","2","5","8","3","6","9")
+p9 <- ggplot(cells, aes(x=Cells.Intensity_MeanIntensity_CorrActin,
+                        color=factor(Image.Group),
+                        group=Image.Group)) +
+  geom_density() +
+  theme_bw(base_size=18) + 
+  theme(legend.position="bottom") +
+  scale_colour_manual(values=c(r[6], g[6], b[6]),
+                      guide=guide_legend(title="Image group", nrow=3),
+                      labels=c("Images 1, 3, 7, 9", "Image 5",
+                               "Images 2, 4, 6, 8"),
+                      breaks=c("1","3","2")) +
+  xlim(0, 0.2) +
+  xlab("Mean intensity CorrActin for cells")
+p10 <- ggplot(cells,
+       aes(x=Cells.Intensity_MeanIntensity_CorrActin,
+           color=factor(Image.Index), group=Image.Index)) +
+  geom_density() +
+  scale_colour_manual(values=c(r[5], g[5], r[6], g[6], b[6], g[7], r[7], g[8],
+                               r[8]),
+                      guide=guide_legend(title="Image number", nrow=3),
+                      labels=paste("Image", legend.order),
+                      breaks=legend.order) +
+  theme_bw(base_size=18) + 
+  theme(legend.position="bottom") +
+  xlim(0, 0.2) +
+  xlab("Mean intensity CorrActin for cells")
+grid.arrange(p9, p10, ncol = 2)
+```
+
+Next up is a ggsubplot-inspired view of how the relationship between `Cells.Texture_ Contrast_CorrActin_3` and `Cells.Texture_Contrast_CorrDNA_3` depends on cell location within an image. All nine images are superimposed, rendering the resulting view radially symmetric. Exploiting this symmetry, only the upper left quadrant of the image is shown. Each box corresonds to an area of 100 by 100 pixels.
+
+```{r, subplots, echo=FALSE, warning=FALSE, fig.height=10}
+ggplot(cells[(cells$Cells.Location_Facet_Y<7 & 
+              cells$Cells.Location_Facet_X<8),], 
+       aes(y=Cells.Texture_Contrast_CorrActin_3,
+           x=Cells.Texture_Contrast_CorrDNA_3)) +
+  geom_smooth(method="loess") +
+  xlim(0, 5) + ylim(0, 3) +
+  theme_bw(base_size=18) + 
+  facet_grid(Cells.Location_Facet_Y ~ Cells.Location_Facet_X) +
+  xlab("Contrast CorrDNA for cells") + ylab("Contrast CorrActin for cells")
+```
+
+Finally, a facet plot conditioned on whether the cell center lies within the ellipse bounded by a box moved 50px inwards from every image border shows how integrated intensity of the CorrPathogen channel for cells behaves within the ellipse, as well as outside.
+
+```{r, ellipse, echo=FALSE, warning=FALSE, fig.height=7}
+ggplot(cells, 
+       aes(x=Cells.Intensity_IntegratedIntensity_CorrPathogen)) +
+  geom_density() +
+  xlim(0, 400) +
+  facet_grid(. ~ Cells.Location_In_Ellipse) +
+  theme_bw(base_size=18) + 
+  xlab("Integrated intensity CorrPathogen for cells")
+```
