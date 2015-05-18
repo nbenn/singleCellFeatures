@@ -10,15 +10,15 @@
 #' 
 #' @examples
 #' data  <- MatData(PlateLocation("J107-2C"))
-#' checkFeatureCompleteness(data)
+#' checkCompletenessFeature(data)
 #'
 #' @export
-checkFeatureCompleteness <- function(x) {
-  UseMethod("checkFeatureCompleteness", x)
+checkCompletenessFeature <- function(x) {
+  UseMethod("checkCompletenessFeature", x)
 }
 
 #' @export
-checkFeatureCompleteness.Data <- function(x) {
+checkCompletenessFeature.Data <- function(x) {
   plate <- convertToPlateLocation(x)
   # check for completenes of single cell data
   pathogen <- getPathogen(plate)
@@ -44,6 +44,6 @@ checkFeatureCompleteness.Data <- function(x) {
 }
 
 #' @export
-checkFeatureCompleteness.default <- function(x, ...) {
+checkCompletenessFeature.default <- function(x, ...) {
   stop("can only deal with Data objects.")
 }
