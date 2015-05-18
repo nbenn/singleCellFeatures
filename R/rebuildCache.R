@@ -36,7 +36,7 @@ rebuildCache.MatData <- function(x, location=NULL, names=NULL) {
     data <- readMatFeatureHelper(location)
     if (!is.null(names)) names(data) <- names
   } else {
-    suppressWarnings(missing <- checkDataCompleteness(x)$missing)
+    suppressWarnings(missing <- checkFeatureCompleteness(x)$missing)
     if (length(missing) == 0) {
       stop("no missing features detected.")
     }

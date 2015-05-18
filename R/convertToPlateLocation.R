@@ -17,19 +17,13 @@ convertToPlateLocation <- function(x) {
 }
 
 #' @export
-convertToPlateLocation.PlateData <- function(x) {
+convertToPlateLocation.DataLocation <- function(x) {
   barcode <- getBarcode(x)
   return(PlateLocation(barcode))
 }
 
 #' @export
-convertToPlateLocation.MatData <- function(x) {
-  barcode <- getBarcode(x)
-  return(PlateLocation(barcode))
-}
-
-#' @export
-convertToPlateLocation.WellLocation <- function(x) {
+convertToPlateLocation.Data <- function(x) {
   barcode <- getBarcode(x)
   return(PlateLocation(barcode))
 }

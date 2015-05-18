@@ -62,7 +62,7 @@ MatData <- function(plate, force.download=FALSE) {
     result$data <- result$data[-ind.rem]
   }
   # check if feature set is complete
-  checkDataCompleteness(result)
+  checkFeatureCompleteness(result)
 
   return(result)
 }

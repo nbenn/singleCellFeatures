@@ -1,7 +1,6 @@
 #' Check completeness of data
 #'
-#' Given a Data object (currently only MatData objects supported), determine if
-#' the set of available features is complete.
+#' Given a Data object, determine if the set of available features is complete.
 #'
 #' @param x Data object
 #' 
@@ -11,15 +10,15 @@
 #' 
 #' @examples
 #' data  <- MatData(PlateLocation("J107-2C"))
-#' checkDataCompleteness(data)
+#' checkFeatureCompleteness(data)
 #'
 #' @export
-checkDataCompleteness <- function(x) {
-  UseMethod("checkDataCompleteness", x)
+checkFeatureCompleteness <- function(x) {
+  UseMethod("checkFeatureCompleteness", x)
 }
 
 #' @export
-checkDataCompleteness.MatData <- function(x) {
+checkFeatureCompleteness.Data <- function(x) {
   plate <- convertToPlateLocation(x)
   # check for completenes of single cell data
   pathogen <- getPathogen(plate)
@@ -45,6 +44,6 @@ checkDataCompleteness.MatData <- function(x) {
 }
 
 #' @export
-checkDataCompleteness.default <- function(x, ...) {
-  stop("can only deal with MatData objects.")
+checkFeatureCompleteness.default <- function(x, ...) {
+  stop("can only deal with Data objects.")
 }
