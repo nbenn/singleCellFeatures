@@ -21,6 +21,16 @@ getWellName.WellLocation <- function(x) {
 }
 
 #' @export
+getWellName.WellData <- function(x) {
+  return(paste0(x$meta$row, x$meta$col))
+}
+
+#' @export
+getWellName.ImageData <- function(x) {
+  return(paste0(x$well.row, x$well.col))
+}
+
+#' @export
 getWellName.default <- function(x) {
   stop("can only deal with WellLocation objects.")
 }

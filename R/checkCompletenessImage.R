@@ -36,7 +36,7 @@ checkCompletenessImage.PlateData <- function(x) {
 }
 
 #' @export
-checkCompletenessWell.WellData <- function(x) {
+checkCompletenessImage.WellData <- function(x) {
   formatOutput <- function(str) {
     out <- paste0("\"", str, "\"")
     colwidth <- max(nchar(out))
