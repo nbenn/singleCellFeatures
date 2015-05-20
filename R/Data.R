@@ -239,15 +239,11 @@ PlateData <- function(plate, select=NULL, drop=NULL, data=NULL) {
   too.short <- which(sapply(data$data, function(x) length(x) < tot.nimgs))
   if (length(too.short) > 0) {
     message("adding zeros to the end of ", length(too.short), " features:")
-    data$data[too.short] <- lapply(
-      too.short,
-      function(ind, dat) {
-        n.zero <- tot.nimgs - length(dat[[ind]])
-        message("  adding ", n.zero, " zeros to ", names(dat[ind]))
-        return(c(dat[[ind]], lapply(1:n.zero, function(x) return(0))))
-      },
-      data$data
-    )
+    data$data[too.short] <- lapply(too.short, function(ind, dat) {
+      n.zero <- tot.nimgs - length(dat[[ind]])
+      message("  adding ", n.zero, " zeros to ", names(dat[ind]))
+      return(c(dat[[ind]], lapply(1:n.zero, function(x) return(0))))
+    },data$data)
   }
   # check if all features ok
   problems <- which(sapply(data$data, function(x) length(x) != tot.nimgs))
@@ -258,23 +254,6 @@ PlateData <- function(plate, select=NULL, drop=NULL, data=NULL) {
 
   # for each feature, return the total number of objects or 0 if it's a list of
   # lists
-  #   *** caught segfault ***
-  #address 0x0, cause 'unknown'
-  #
-  #Traceback:
-  # 1: lapply(x, length)
-  # 2: unlist(lapply(x, length))
-  # 3: unique(unlist(lapply(x, length)))
-  # 4: simplify2array(answer, higher = (simplify == "array"))
-  # 5: sapply(feature, is.list)
-  # 6: FUN(X[[i]], ...)
-  # 7: lapply(X = X, FUN = FUN, ...)
-  # 8: sapply(data$data, function(feature) {
-  #      leng <- sum(sapply(feature, length))
-  #      list <- any(sapply(feature, is.list))
-  #      return(leng * (!list))
-  #    })
-  # 9: PlateData(PlateLocation("J101-2C"))
   feature.length <- sapply(data$data, function(feature) {
     leng <- sum(sapply(feature, length))
     list <- any(sapply(feature, is.list))
@@ -283,30 +262,22 @@ PlateData <- function(plate, select=NULL, drop=NULL, data=NULL) {
   # set up groups (defined by equal total length)
   groups <- unique(feature.length)
   # sort all feature.lengths into those groups
-  groups <- lapply(
-    groups,
-    function(length, feat.lengths, feat.names) {
-      indices <- which(feat.lengths == length)
-      length <- length
-      return(list(indices=indices, length=length))
-    },
-    feature.length, names(data$data)
-  )
+  groups <- lapply(groups, function(length, feat.lengths, feat.names) {
+    indices <- which(feat.lengths == length)
+    length <- length
+    return(list(indices=indices, length=length))
+  }, feature.length, names(data$data))
   # get a name for each group by finding the most frequent object
-  names(groups) <- lapply(
-    groups,
-    function(group, feat.lengths, feat.names) {
-      all.names <- feat.names[feat.lengths == group$length]
-      all.names <- sapply(all.names, function(name) {
-        res <- unlist(strsplit(name, "[.]"))
-        if (length(res) != 2) warning("unexpected feature name format")
-        return(res[1])
-      })
-      counts <- table(all.names)
-      return(names(counts)[which.max(counts)])
-    },
-    feature.length, names(data$data)
-  )
+  names(groups) <- lapply(groups, function(group, feat.lengths, feat.names) {
+    all.names <- feat.names[feat.lengths == group$length]
+    all.names <- sapply(all.names, function(name) {
+      res <- unlist(strsplit(name, "[.]"))
+      if (length(res) != 2) warning("unexpected feature name format")
+      return(res[1])
+    })
+    counts <- table(all.names)
+    return(names(counts)[which.max(counts)])
+  }, feature.length, names(data$data))
   # reorder groups into lists corresponding to how the WellData objects will be
   # constructed
   # the vec group consists of data that has a single value per image, those
@@ -332,9 +303,64 @@ PlateData <- function(plate, select=NULL, drop=NULL, data=NULL) {
   if (length(rem.mat) > 0) groups.mat <- groups.mat[-rem.mat]
   if (length(rem.vec) > 0) groups.vec <- groups.vec[-rem.vec]
   if (length(rem.lst) > 0) groups.lst <- groups.lst[-rem.lst]
-  groups <- list(mat=groups.mat,
-                 vec=groups.vec,
+  # PercentTouchingNeighbors requires IdentityOfNeighbors to be of use
+  neigh.ident <- grep("^Neighbors.IdentityOfNeighbors_", names(groups.lst[[1]]))
+  neigh.touch <- grep("^Neighbors.PercentTouchingNeighbors_",
+                      names(groups.lst[[1]]))
+  if(length(neigh.touch) > 0) {
+    if(length(neigh.ident) != length(neigh.touch)) {
+      warning("having \"Neighbors.PercentTouchingNeighbors\" features",
+              " without corresponding\n  \"Neighbors.IdentityOfNeighbors\"",
+              " features makes little sense.")
+    } else {
+      l_ply(names(groups.lst[[1]][neigh.touch]), function(touch, ident) {
+        object <- unlist(strsplit(touch, 
+                                  "Neighbors.PercentTouchingNeighbors_"))[2]
+        if(!any(grepl(paste0(object, "$"), ident))) {
+          warning("having \"Neighbors.PercentTouchingNeighbors\" features",
+                  " without corresponding\n  \"Neighbors.IdentityOfNeighbors\"",
+                  " features makes little sense: could not\n  find ", touch)
+        }
+      }, names(groups.lst[[1]][neigh.ident]))      
+    }
+  }
+  # manually modify the lst group
+  if(length(neigh.ident) > 0 & length(neigh.touch) > 0) {
+    rest <- groups.lst[[1]][-c(neigh.ident, neigh.touch)]
+    iden <- groups.lst[[1]][neigh.ident]
+    touc <- groups.lst[[1]][neigh.touch]
+    if(length(rest) > 0) {
+      groups.lst <- list("IdentityOfNeighbors" = iden,
+                         "PercentTouchingNeighbors" = touc,
+                         "OtherFeatures" = rest)
+    } else {
+      groups.lst <- list("IdentityOfNeighbors" = iden,
+                         "PercentTouchingNeighbors" = touc)
+    }
+  } else if(length(neigh.ident) > 0) {
+    rest <- groups.lst[[1]][-neigh.ident]
+    iden <- groups.lst[[1]][neigh.ident]
+    if(length(rest) > 0) {
+      groups.lst <- list("IdentityOfNeighbors" = iden,
+                         "OtherFeatures" = rest)
+    } else {
+      groups.lst <- list("IdentityOfNeighbors" = iden)
+    }
+  } else if(length(neigh.touch) > 0) {
+    rest <- groups.lst[[1]][-neigh.touch]
+    touc <- groups.lst[[1]][neigh.touch]
+    if(length(rest) > 0) {
+      groups.lst <- list("PercentTouchingNeighbors" = touc,
+                         "OtherFeatures" = rest)
+    } else {
+      groups.lst <- list("PercentTouchingNeighbors" = touc)
+    }
+  }
+
+  groups <- list(vec=groups.vec,
+                 mat=groups.mat,
                  lst=groups.lst)
+
   data$data <- lapply(groups, function(group.type, data) {
     return(lapply(group.type, function(group, data) {
       return(lapply(group, function(member, data) {
@@ -346,7 +372,7 @@ PlateData <- function(plate, select=NULL, drop=NULL, data=NULL) {
   # the following step will need a lot of memory
   gc()
   # tot.nimgs ImageData objects are built from the complete plate data
-  data$data <- lapply(1:tot.nimgs, function(ind, data, name, n.imgs) {
+  data$data <- llply(1:tot.nimgs, function(ind, data, name, n.imgs) {
     vec <- lapply(data$vec, function(group, ind) {
       return(unlist(lapply(group, function(feature, i) {
         return(feature[i])
@@ -365,13 +391,42 @@ PlateData <- function(plate, select=NULL, drop=NULL, data=NULL) {
       rownames(grp) <- NULL
       return(grp)
     }, ind)
-    lst <- lapply(data$lst, function(group, ind) {
-      return(lapply(group, function(feature, i) {
-        return(feature[i])
-      }, ind))
-    }, ind)
+    lst <- mapply(function(group, gname, ind) {
+      if(gname == "IdentityOfNeighbors") {
+        return(lapply(group, function(feature, i) {
+          # build sparse adjacency matrices
+          l <- length(feature[[i]])
+          if(l > 1) {
+            p <- c(0, cumsum(sapply(feature[[i]], function(x) length(x[[1]]))))
+            j <- unlist(feature[[i]])
+            return(sparseMatrix(j=j, p=p, dims=c(l, l)))
+          } else return(NULL)
+        }, ind))
+      } else if(gname == "PercentTouchingNeighbors") {
+        return(lapply(group, function(feature, i) return(unlist(feature[[i]])),
+                      ind))
+      } else {
+        return(lapply(group, function(feature, i) return(feature[i]), ind))
+      }
+    }, data$lst, names(data$lst), list(ind=ind), SIMPLIFY = FALSE)
+    if(!is.null(lst$PercentTouchingNeighbors) & 
+       !is.null(lst$IdentityOfNeighbors)) {
+      lst$PercentTouchingNeighbors <- mapply(function(feat, fname, mats) {
+        object <- unlist(strsplit(fname, 
+                                  "Neighbors.PercentTouchingNeighbors_"))[2]
+        mat <- mats[[grep(paste0("Neighbors.IdentityOfNeighbors_", object),
+                          names(mats))]]
+        if(is.null(mat)) {
+          return(feat)
+        } else {
+          return(sparseMatrix(j=mat@i, p=mat@p, x=feat, dims=dim(mat),
+                 index1=FALSE))
+        }
+      }, lst$PercentTouchingNeighbors, names(lst$PercentTouchingNeighbors),
+         list(mats=lst$IdentityOfNeighbors), SIMPLIFY = FALSE)
+    }
     return(ImageData(name, ind, n.imgs, vec, mat, lst))
-  }, data$data, getBarcode(plate), n.imgs)
+  }, data$data, getBarcode(plate), n.imgs, .progress = "text")
   # free no longer needed memory
   gc()
 
