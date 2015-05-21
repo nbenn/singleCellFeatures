@@ -176,7 +176,6 @@ processSingleCellDataPlate <- function(locations, select=NULL, drop=NULL,
         data <- PlateData(current.plate)
         case <- 3
         data <- extractWells(data, locations, FALSE)
-        saveToCache(data)
       } else if(any(class(locations) == "PlateLocation")) {
         # plate may only be partially imported (depending on select, drop)
         data <- PlateData(current.plate, select, drop)
@@ -200,7 +199,6 @@ processSingleCellDataPlate <- function(locations, select=NULL, drop=NULL,
           if(any(class(location) == "PlateLocation")) return(data)
           else if (any(class(location) == "WellLocation")) {
             well.data <- extractWells(data, location, FALSE)
-            saveToCache(well.data)
             return(well.data)
           } else stop("can only deal with PlateLocation/WellLocation objects")
         },

@@ -27,6 +27,7 @@ extractWells <- function(x, ...) {
 }
 #' @export
 extractWells.PlateData <- function(x, wells, keep.plate=TRUE) {
+  # turn input into a list of WellLocation objects
   if(any(class(wells) == "WellLocation")) {
     wells <- list(wells)
   } else if(is.numeric(wells)) {
@@ -45,17 +46,22 @@ extractWells.PlateData <- function(x, wells, keep.plate=TRUE) {
       return(WellLocation(bc, row, col))
     })
   }
-
+  # input validation
   if(!all(sapply(wells, function(well) {
       return(any(class(well) == "WellLocation"))
   }))) stop("can only work with a list of WellLocation objects")
-
   barcodes <- sapply(wells, getBarcode)
   if(length(unique(barcodes)) != 1)
     stop("can only deal with WellLocations on the same plate")
   if(unique(barcodes) != getBarcode(x))
     stop("WellLocations have to be on the same plate as the data")
+  # process wells list: get names of requested wells
   well.names <- sapply(wells, getWellName)
+  # save well caches
+  l_ply(well.names, function(name, data) {
+    saveToCache(x$data[[name]])
+  })
+  # return results
   if(!keep.plate) {
     if(length(well.names) == 1) return(x$data[[well.names]])
     else return(x$data[well.names])
