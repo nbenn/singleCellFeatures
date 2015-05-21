@@ -18,29 +18,48 @@ WellMetadata <- function(well) {
   }
   aggregate <- PlateAggregate(well)
   gen.aggr  <- aggregate$gen[aggregate$gen$WellName == getWellName(well),]
+  if(nrow(gen.aggr) == 0) {
+    warning("no aggregate information available: metadata will be ",
+            "incomplete for well ", getWellName(well), " on plate ",
+            getBarcode(well), ".")
+    return(structure(list(
+      barcode             = getBarcode(well),
+      row                 = well$row,
+      col                 = well$column,
+      index               = well$index,
+      well.type           = NA,
+      control.type        = NA,
+      control.description = NA,
+      gene.id             = NA,
+      gene.name           = NA,
+      sirna.manufacturer  = NA,
+      sirna.code          = NA,
+      sirna.sequence      = NA
+    ), class = c("WellMetadata", "Metadata")))
+  }
   if(is.null(aggregate$kin)) {
     warning("no kinome aggregate information available: metadata will be ",
             "incomplete for well ", getWellName(well), " on plate ",
             getBarcode(well), ".")
-    result <- list(
+    return(structure(list(
       barcode             = gen.aggr$Barcode,
       row                 = gen.aggr$WellRow,
       col                 = as.integer(gen.aggr$WellColumn),
       index               = getWellIndex1D(gen.aggr$WellRow,
                                            gen.aggr$WellColumn, NULL),
       well.type           = gen.aggr$WellType,
-      control.type        = NULL,
-      control.description = NULL,
+      control.type        = NA,
+      control.description = NA,
       gene.id             = ifelse(gen.aggr$ID == "unknown", NA,
                                    as.integer(gen.aggr$ID)),
       gene.name           = gen.aggr$Name,
       sirna.manufacturer  = gen.aggr$LIBRARY,
       sirna.code          = gen.aggr$Catalog_number,
       sirna.sequence      = gen.aggr$Sequence_antisense_5_3
-    )
+    ), class = c("WellMetadata", "Metadata")))
   } else {
     kin.aggr  <- aggregate$kin[aggregate$kin$WellName == getWellName(well),]
-    result <- list(
+    return(structure(list(
       barcode             = gen.aggr$Barcode,
       row                 = gen.aggr$WellRow,
       col                 = as.integer(gen.aggr$WellColumn),
@@ -56,9 +75,8 @@ WellMetadata <- function(well) {
       sirna.manufacturer  = gen.aggr$LIBRARY,
       sirna.code          = gen.aggr$Catalog_number,
       sirna.sequence      = gen.aggr$Sequence_antisense_5_3
-    )
+    ), class = c("WellMetadata", "Metadata")))
   }
-  return(structure(result, class = c("WellMetadata", "Metadata")))
 }
 
 #' Constructor for PlateMetadata objects
