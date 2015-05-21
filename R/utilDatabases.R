@@ -215,7 +215,7 @@ updateDatabaseWells <- function(pathogens=NULL) {
   kin <- read.table(aux, header = TRUE, sep = ";", fill = TRUE,
                     stringsAsFactors = FALSE, comment.char = "")
   n.cores <- detectCores()
-  registerDoMC(cores=n.cores)
+  registerDoParallel(cores=detectCores())
   message("found 1 kinome .csv file:\n", aux, "\nand ", length(files),
           " genome .csv files; using ", n.cores, " cores.")
   # process the data one pathogen at the time

@@ -33,7 +33,7 @@ test <- function() {
 
 library(singleCellFeatures)
 
-registerDoMC(cores=detectCores())
+registerDoParallel(cores=detectCores())
 res <- foreach(1:10, .combine=rbind) \%doparMC\% test()
 
 message(paste(res$out, collapse="\\n"))

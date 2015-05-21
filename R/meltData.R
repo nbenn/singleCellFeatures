@@ -17,75 +17,166 @@ meltData <- function(x) {
 }
 
 #' @export
-meltData.MatData <- function(x) {
-  return(names(x$data))
-}
-
-#' @export
 meltData.PlateData <- function(x) {
-  groups <- names(x$data[[1]]$data[[1]]$data.mat)
-  result <- unlist(lapply(x$data, meltData), recursive=FALSE)
-  result <- lapply(groups, function(group, data) {
-    regexp <- paste0("^[A-P]([1-9]|1[0-9]|2[0-4])\\.", group, "$")
+  grps.vec <- names(x$data[[1]]$data[[1]]$data.vec)
+  grps.mat <- names(x$data[[1]]$data[[1]]$data.mat)
+  grps.lst <- names(x$data[[1]]$data[[1]]$data.lst)
+  message("extracting features from wells/images:")
+  all      <- unlist(llply(x$data, meltData, .progress = "text"),
+                                 recursive=FALSE)
+  message("building vec feature data frame.")
+  res.vec  <- llply(grps.vec, function(group, data) {
+    regexp <- paste0("^[A-P]([1-9]|1[0-9]|2[0-4])\\.vec\\.", group, "$")
     res <- data[grep(regexp, names(data))]
-    res <- do.call(rbind, res)
+    res <- rbind.fill(res)
     return(res)
-  }, result)
-  names(result) <- groups
-  return(result)
+  }, unlist(all[grep("^[A-P]([1-9]|1[0-9]|2[0-4])\\.vec$", names(all))],
+            recursive=FALSE))
+  message("building mat feature data frame.")
+  res.mat  <- llply(grps.mat, function(group, data) {
+    regexp <- paste0("^[A-P]([1-9]|1[0-9]|2[0-4])\\.mat\\.", group, "$")
+    res <- data[grep(regexp, names(data))]
+    res <- rbind.fill(res)
+    return(res)
+  }, unlist(all[grep("^[A-P]([1-9]|1[0-9]|2[0-4])\\.mat$", names(all))],
+            recursive=FALSE))
+  message("building lst feature matrices.")
+  res.lst  <- llply(grps.lst, function(group, data) {
+    regexp <- paste0("^[A-P]([1-9]|1[0-9]|2[0-4])\\.lst\\.", group, "$")
+    res <- data[grep(regexp, names(data))]
+    if(group == "OtherFeatures") {
+      names(res) <- sapply(names(res), function(x) {
+        return(unlist(strsplit(x, "[.]"))[1])
+      })
+    } else {
+      fnames <- names(res[[1]])
+      res <- lapply(fnames, function(name, data) {
+        regexp <- paste0("^[A-P]([1-9]|1[0-9]|2[0-4])\\.lst\\..*", name, "$")
+        dat <- lapply(data[grep(regexp, names(data))], function(x) {
+          if(is.null(x)) return(matrix(nrow=0, ncol=0))
+          else return(x)
+        })
+        result <- bdiag(dat)
+        dims <- sapply(dat, function(x) return(dimnames(x)[1]))
+        dimname <- unlist(lapply(1:length(dims), function(i, d) {
+          if(length(d[[i]]) > 0) {
+            wellname <- getWellIndex2D(i)
+            return(paste0(wellname$wel.row, wellname$wel.col, "_", d[[i]]))
+          } else return(NULL)
+        }, dims))
+        dimnames(result) <- list(dimname, NULL)
+        return(result)
+      }, unlist(res, recursive=FALSE))
+      names(res) <- fnames
+    }
+    return(res)
+  }, unlist(all[grep("^[A-P]([1-9]|1[0-9]|2[0-4])\\.lst$", names(all))],
+            recursive=FALSE))
+  names(res.vec) <- grps.vec
+  names(res.mat) <- grps.mat
+  names(res.lst) <- grps.lst
+  return(list(vec=res.vec, mat=res.mat, lst=res.lst))
 }
 
 #' @export
 meltData.WellData <- function(x) {
-  groups <- names(x$data[[1]]$data.mat)
-  result <- unlist(lapply(x$data, meltData), recursive=FALSE)
-  result <- lapply(groups, function(group, data) {
-    regexp <- paste0("^img_[1-3]{2}\\.", group, "$")
+  grps.vec <- names(x$data[[1]]$data.vec)
+  grps.mat <- names(x$data[[1]]$data.mat)
+  grps.lst <- names(x$data[[1]]$data.lst)
+  all      <- unlist(lapply(x$data, meltData), recursive=FALSE)
+  res.vec  <- lapply(grps.vec, function(group, data) {
+    regexp <- paste0("^img_[1-3]{2}\\.vec\\.", group, "$")
     res <- data[grep(regexp, names(data))]
     res <- do.call(rbind, res)
     return(res)
-  }, result)
-  names(result) <- groups
-  return(result)
+  }, unlist(all[grep("^img_[1-3]{2}\\.vec$", names(all))], recursive=FALSE))
+  res.mat  <- lapply(grps.mat, function(group, data) {
+    regexp <- paste0("^img_[1-3]{2}\\.mat\\.", group, "$")
+    res <- data[grep(regexp, names(data))]
+    res <- do.call(rbind, res)
+    return(res)
+  }, unlist(all[grep("^img_[1-3]{2}\\.mat$", names(all))], recursive=FALSE))
+  res.lst  <- lapply(grps.lst, function(group, data) {
+    regexp <- paste0("^img_[1-3]{2}\\.lst\\.", group, "$")
+    res <- data[grep(regexp, names(data))]
+    if(group == "OtherFeatures") {
+      names(res) <- sapply(names(res), function(x) {
+        return(unlist(strsplit(x, "[.]"))[1])
+      })
+    } else {
+      fnames <- names(res[[1]])
+      res <- lapply(fnames, function(name, data) {
+        regexp <- paste0("^img_[1-3]{2}\\.lst\\..*", name, "$")
+        dat <- lapply(data[grep(regexp, names(data))], function(x) {
+          if(is.null(x)) return(matrix(nrow=0, ncol=0))
+          else return(x)
+        })
+        result <- bdiag(dat)
+        dims <- sapply(dat, function(x) return(dim(x)[1]))
+        dimname <- unlist(lapply(1:length(dims), function(i, d) {
+          return(rep(i, d[i]))
+        }, dims))
+        dimnames(result) <- list(dimname, NULL)
+        return(result)
+      }, unlist(res, recursive=FALSE))
+      names(res) <- fnames
+    }
+    return(res)
+  }, unlist(all[grep("^img_[1-3]{2}\\.lst$", names(all))], recursive=FALSE))
+  names(res.vec) <- grps.vec
+  names(res.mat) <- grps.mat
+  names(res.lst) <- grps.lst
+  return(list(vec=res.vec, mat=res.mat, lst=res.lst))
 }
 
 #' @export
 meltData.ImageData <- function(x) {
-  result <- lapply(x$data.mat, function(group) {
-    n.rows <- nrow(group)
-    if(n.rows > 0) {
-      image.group <- x$data.vec$Image[["Image.Group"]]
+  well.index  <- getWellIndex1D(x$well.row, x$well.col, NULL, x$image.total)
+  well.name   <- paste0(x$well.row, x$well.col)
 
-      image.ind      <- x$image.index
-      image.ind      <- rep(image.ind, n.rows)
-      dim(image.ind) <- c(n.rows, 1)
-      well.ind      <- getWellIndex1D(x$well.row, x$well.col, NULL,
-                                      x$image.total)
-      well.ind      <- rep(well.ind, n.rows)
-      dim(well.ind) <- c(n.rows, 1)
-      plate      <- x$plate
-      plate      <- rep(plate, n.rows)
-      dim(plate) <- c(n.rows, 1)
-
-      if(!is.null(image.group)) {
-        image.group      <- rep(image.group, n.rows)
-        dim(image.group) <- c(n.rows, 1)
-        info      <- data.frame(image.ind, well.ind, plate, image.group,
-                                stringsAsFactors=FALSE)
-        colnames(info) <- c("Image.Index", "Well.Index", "Plate.Barcode",
-                            "Image.Group")
-      } else {
-        info      <- data.frame(image.ind, well.ind, plate,
-                                stringsAsFactors=FALSE)
-        colnames(info) <- c("Image.Index", "Well.Index", "Plate.Barcode")
-      }
-
-      return(data.frame(group, info))
+  res.vec <- lapply(x$data.vec, function(group) {
+    if (nrow(group) > 0) {
+      res <- cbind(group, x$image.index, well.index, well.name, x$plate,
+                   stringsAsFactors=FALSE)
+      colnames(res) <- c(colnames(group), "Image.Index", "Well.Index",
+                         "Well.Name", "Plate.Barcode")
+      return(res)
     } else {
       return(NULL)
     }
   })
-  return(result)
+  res.mat <- lapply(x$data.mat, function(group) {
+    n.rows <- nrow(group)
+    if(n.rows > 0) {
+      image.ind      <- rep(x$image.index, n.rows)
+      dim(image.ind) <- c(n.rows, 1)
+      well.ind       <- rep(well.index, n.rows)
+      dim(well.ind)  <- c(n.rows, 1)
+      well.nme       <- rep(well.name, n.rows)
+      dim(well.nme)  <- c(n.rows, 1)
+      plate          <- rep(x$plate, n.rows)
+      dim(plate)     <- c(n.rows, 1)
+
+      if("Image.Group" %in% names(x$data.vec$Image)) {
+        image.group      <- rep(x$data.vec$Image[["Image.Group"]], n.rows)
+        dim(image.group) <- c(n.rows, 1)
+        info      <- data.frame(image.ind, well.ind, well.nme, plate,
+                                image.group, stringsAsFactors=FALSE)
+        colnames(info) <- c("Image.Index", "Well.Index", "Well.Name",
+                            "Plate.Barcode", "Image.Group")
+      } else {
+        info      <- data.frame(image.ind, well.ind, well.nme, plate,
+                                stringsAsFactors=FALSE)
+        colnames(info) <- c("Image.Index", "Well.Index", "Well.Name",
+                            "Plate.Barcode")
+      }
+
+      return(cbind(group, info))
+    } else {
+      return(NULL)
+    }
+  })
+  return(list(vec=res.vec, mat=res.mat, lst=x$data.lst))
 }
 
 #' @export

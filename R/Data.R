@@ -30,6 +30,7 @@ MatData <- function(plate, force.download=FALSE) {
   }
   # check if plate is cached
   if (file.exists(getCacheFilenameData(plate)) & !force.download) {
+    message("reading plate chache file.")
     data <- readRDSMC(getCacheFilenameData(plate))
     result <- structure(list(meta = PlateMetadata(plate),
                              data = data), class = c("MatData", "Data"))
@@ -163,7 +164,7 @@ readMatFeatureHelper <- function(path) {
   if (length(filenames) == 0) stop("no .mat files found.")
   # get the data
   message("fetching ", length(filenames), " files")
-  data <- lapply(filenames, readFeatureFile)
+  data <- llply(filenames, readFeatureFile, .progress = "text")
   import.name <- lapply(filenames, getFeatureName)
   names(data) <- import.name
 
@@ -304,9 +305,15 @@ PlateData <- function(plate, select=NULL, drop=NULL, data=NULL) {
   if (length(rem.vec) > 0) groups.vec <- groups.vec[-rem.vec]
   if (length(rem.lst) > 0) groups.lst <- groups.lst[-rem.lst]
   # PercentTouchingNeighbors requires IdentityOfNeighbors to be of use
-  neigh.ident <- grep("^Neighbors.IdentityOfNeighbors_", names(groups.lst[[1]]))
-  neigh.touch <- grep("^Neighbors.PercentTouchingNeighbors_",
-                      names(groups.lst[[1]]))
+  if(length(groups.lst) > 0) {
+    neigh.ident <- grep("^Neighbors.IdentityOfNeighbors",
+                        names(groups.lst[[1]]))
+    neigh.touch <- grep("^Neighbors.PercentTouchingNeighbors",
+                        names(groups.lst[[1]]))
+  } else {
+    neigh.ident <- NULL
+    neigh.touch <- NULL
+  }
   if(length(neigh.touch) > 0) {
     if(length(neigh.ident) != length(neigh.touch)) {
       warning("having \"Neighbors.PercentTouchingNeighbors\" features",
@@ -315,7 +322,7 @@ PlateData <- function(plate, select=NULL, drop=NULL, data=NULL) {
     } else {
       l_ply(names(groups.lst[[1]][neigh.touch]), function(touch, ident) {
         object <- unlist(strsplit(touch, 
-                                  "Neighbors.PercentTouchingNeighbors_"))[2]
+                                  "Neighbors.PercentTouchingNeighbors"))[2]
         if(!any(grepl(paste0(object, "$"), ident))) {
           warning("having \"Neighbors.PercentTouchingNeighbors\" features",
                   " without corresponding\n  \"Neighbors.IdentityOfNeighbors\"",
@@ -371,50 +378,66 @@ PlateData <- function(plate, select=NULL, drop=NULL, data=NULL) {
 
   # the following step will need a lot of memory
   gc()
+  message("building ImageData objects:")
   # tot.nimgs ImageData objects are built from the complete plate data
   data$data <- llply(1:tot.nimgs, function(ind, data, name, n.imgs) {
-    vec <- lapply(data$vec, function(group, ind) {
-      return(unlist(lapply(group, function(feature, i) {
-        return(feature[i])
-      }, ind)))
-    }, ind)
-    mat <- lapply(data$mat, function(group, ind) {
-      n.rows <- length(group[[1]][[ind]])
-      grp <- vapply(group, function(feature, i) {
-        return(unlist(feature[i]))
-      }, double(n.rows), ind)
-      names <- colnames(grp)
-      if(is.null(names)) names <- names(grp)
-      n.cols <- length(names)
-      dim(grp) <- c(n.rows, n.cols)
-      colnames(grp) <- names
-      rownames(grp) <- NULL
-      return(grp)
-    }, ind)
-    lst <- mapply(function(group, gname, ind) {
-      if(gname == "IdentityOfNeighbors") {
-        return(lapply(group, function(feature, i) {
-          # build sparse adjacency matrices
-          l <- length(feature[[i]])
-          if(l > 1) {
-            p <- c(0, cumsum(sapply(feature[[i]], function(x) length(x[[1]]))))
-            j <- unlist(feature[[i]])
-            return(sparseMatrix(j=j, p=p, dims=c(l, l)))
-          } else return(NULL)
-        }, ind))
-      } else if(gname == "PercentTouchingNeighbors") {
-        return(lapply(group, function(feature, i) return(unlist(feature[[i]])),
-                      ind))
-      } else {
-        return(lapply(group, function(feature, i) return(feature[i]), ind))
-      }
-    }, data$lst, names(data$lst), list(ind=ind), SIMPLIFY = FALSE)
+    if(length(data$vec) > 0) {
+      vec <- lapply(data$vec, function(group, ind) {
+        return(data.frame(lapply(group, function(feature, i) {
+          return(feature[[i]])
+        }, ind), stringsAsFactors=FALSE, check.names=FALSE))
+      }, ind)
+    } else {
+      vec <- NULL
+    }
+    if(length(data$mat) > 0) {
+      mat <- lapply(data$mat, function(group, ind) {
+        n.rows <- length(group[[1]][[ind]])
+        grp <- vapply(group, function(feature, i) {
+          return(unlist(feature[i]))
+        }, double(n.rows), ind)
+        names <- colnames(grp)
+        if(is.null(names)) names <- names(grp)
+        n.cols <- length(names)
+        dim(grp) <- c(n.rows, n.cols)
+        colnames(grp) <- names
+        rownames(grp) <- NULL
+        return(grp)
+      }, ind)
+    } else {
+      mat <- NULL
+    }
+    if(length(data$lst) > 0) {
+      lst <- mapply(function(group, gname, ind) {
+        if(gname == "IdentityOfNeighbors") {
+          return(lapply(group, function(feature, i) {
+            # build sparse adjacency matrices
+            l <- length(feature[[i]])
+            if(l > 1) {
+              p <- c(0, cumsum(sapply(feature[[i]],
+                               function(x) length(x[[1]]))))
+              j <- unlist(feature[[i]])
+              return(sparseMatrix(j=j, p=p, dims=c(l, l)))
+            } else return(NULL)
+          }, ind))
+        } else if(gname == "PercentTouchingNeighbors") {
+          return(lapply(group, function(feature, i) {
+            if(length(feature[[i]]) > 1) return(unlist(feature[[i]]))
+            else return(NULL)
+          }, ind))
+        } else {
+          return(lapply(group, function(feature, i) return(feature[i]), ind))
+        }
+      }, data$lst, names(data$lst), list(ind=ind), SIMPLIFY=FALSE)
+    } else {
+      lst <- NULL
+    }
     if(!is.null(lst$PercentTouchingNeighbors) & 
        !is.null(lst$IdentityOfNeighbors)) {
       lst$PercentTouchingNeighbors <- mapply(function(feat, fname, mats) {
         object <- unlist(strsplit(fname, 
-                                  "Neighbors.PercentTouchingNeighbors_"))[2]
-        mat <- mats[[grep(paste0("Neighbors.IdentityOfNeighbors_", object),
+                                  "Neighbors.PercentTouchingNeighbors"))[2]
+        mat <- mats[[grep(paste0("Neighbors.IdentityOfNeighbors", object),
                           names(mats))]]
         if(is.null(mat)) {
           return(feat)
@@ -441,14 +464,13 @@ PlateData <- function(plate, select=NULL, drop=NULL, data=NULL) {
   }
   # get all well metadata and build 384 WellData objects from the 3456
   # ImageData objects
-  data$data <- lapply(1:384,
-    function(ind, wells, data) {
-      well <- WellLocation(wells[ind,1], wells[ind,2], wells[ind,3])
-      imgs <- data[(ind - 1) * n.imgs + 1:n.imgs]
-      names(imgs) <- img.names
-      return(WellData(well, imgs))
-    },
-  all.wells, data$data)
+  message("building WellData objects:")
+  data$data <- llply(1:384, function(ind, wells, data) {
+    well <- WellLocation(wells[ind,1], wells[ind,2], wells[ind,3])
+    imgs <- data[(ind - 1) * n.imgs + 1:n.imgs]
+    names(imgs) <- img.names
+    return(WellData(well, imgs))
+  }, all.wells, data$data, .progress = "text")
   names(data$data) <- paste0(rep(LETTERS[1:16], each=24), rep(1:24, 16))
   # return a PlateData object
   return(structure(data, class = c("PlateData", "Data")))

@@ -116,7 +116,8 @@ augmentCordinateFeatures.ImageData <- function(x, ellipse=NULL, facet=NULL,
       stop("expecting an integer vector of length 2 for facet.")
     }
     facet.size <- image.dimensions / facet
-    message("facet size: ", facet.size[1], " (x), ", facet.size[2], " (y)")
+    message("facet size: ", round(facet.size[1]), " (x), ",
+            round(facet.size[2]), " (y)")
     x$data.mat <- lapply(x$data.mat, function(group) {
       index.x <- grep("Location_Center_X", colnames(group))
       index.y <- grep("Location_Center_Y", colnames(group))

@@ -29,7 +29,7 @@ getNoImgPerWell.MatData <- function(data) {
     warning("unsure about the number of images per well.")
   }
   message("assuming ", n.imgs, " images per well:\nmax legnth: ", max.length,
-          ", fraction of full length features: ", full.fract)
+          ", fraction of full length features: ", format(full.fract, digits=3))
 
   return(n.imgs)
 }
