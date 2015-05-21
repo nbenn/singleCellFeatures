@@ -48,3 +48,31 @@ rebuildAllMatDataCaches <- function() {
     })
   })
 }
+
+#' Remove all local well caches
+#'
+#' Due to generating well caches being fairly inexpensive and the circumstance
+#' that they are downstream to Data object creation (changes in Data object
+#' specifications often require all well caches to be rebuilt), this function
+#' purges all well caches. All .rds files in well cache directories are deleted
+#' and if the direcory is empty afterwards, it is also removed.
+#' 
+#' @return NULL (invisibly).
+#' 
+#' @examples
+#' deleteAllWellCaches()
+#' 
+#' @export
+deleteAllWellCaches <- function() {
+  l_ply(getAllLocalPlates(), function(plate) {
+    cacheDir   <- dirname(getCacheFilenameData(WellLocation(plate, "A", 1)))
+    cacheFiles <- list.files(path=cacheDir, pattern="\\.rds", full.names=TRUE)
+    if(length(cacheFiles) > 0) {
+      unlink(cacheFiles)
+      if(length(list.files(path=cacheDir, pattern=".*")) == 0) {
+        unlink(cacheDir, recursive=TRUE)
+      }
+    }
+  })
+  invisible(NULL)
+}
