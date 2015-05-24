@@ -30,7 +30,7 @@ convertToPlateLocation.Data <- function(x) {
 
 #' @export
 convertToPlateLocation.PlateAggregate <- function(x) {
-  return(x$met)
+  return(x$plate)
 }
 
 #' @export

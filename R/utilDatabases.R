@@ -136,50 +136,27 @@ updateDatabasePlate <- function() {
 #' @export
 updateDatabaseWells <- function(pathogens=NULL) {
 
-  processPathogen <- function(path, supp.data) {
-    message("processing ", tail(unlist(strsplit(path, "/")), n=1))
+  processPathogen <- function(path) {
     # read genome aggregate file of the current pathogen
-    pathogen.all <- read.delim(path, as.is=TRUE)
+    pathogen.all <- read.delim(path, stringsAsFactors=FALSE)
     # reduce the dataset a handful of cols (keep filesize/loading times down)
-    pathogen.gen <- pathogen.all[c("Barcode", "WellRow", "WellColumn",
-                                             "WellType", "ID", "Name")]
+    pathogen.red <- pathogen.all[c("Barcode", "WellRow", "WellColumn",
+                                   "WellType", "ID_openBIS", "ID_manufacturer",
+                                   "Name")]
+    colnames(pathogen.red) <- c("barcode", "well.row", "well.col", "well.type",
+                                "id.openBIS", "id.manufacturer",  "name")
     # get the name of the current pathogen: "PATHOGEN_TEAM"
     pathogen.name <- unique(pathogen.all$Group)
     if(length(pathogen.name) != 1) stop("different group names within pathogen")
-    # get the name of the current pathogen: strip "_TEAM"
-    pathogen.name <- unlist(strsplit(pathogen.name, "_"))
-    if(length(pathogen.name) != 2 | pathogen.name[2] != "TEAM") {
-      stop("something is not right with the group name")
+    if(pathogen.name != "MOCK") {
+      # get the name of the current pathogen: strip "_TEAM"
+      pathogen.name <- unlist(strsplit(pathogen.name, "_"))
+      if(length(pathogen.name) != 2 | pathogen.name[2] != "TEAM") {
+        stop("something is not right with the group name")
+      }
     }
     # get the name of the current pathogen: "pathogen"
     pathogen.name <- tolower(pathogen.name[1])
-    # extract data for current pathogen from kinome aggregate
-    pathogen.kin <- supp.data[grep(paste0("^", toupper(pathogen.name),
-                                               "-TEAM"), supp.data$Experiment),]
-    # find all plates in the current genome dataset
-    barcode.gen <- unique(pathogen.gen$Barcode)
-    # find all plates in the current kinome dataset
-    barcode.kin <- unique(pathogen.kin$Barcode)
-    # find all plates in both the current genome and kinome datasets
-    matches <- barcode.kin %in% barcode.gen
-    barcode.upd <- barcode.kin[matches]
-    message("augmenting ", length(barcode.upd), " of the ", length(barcode.gen),
-            " found plates with kinome aggregate information.")
-    # include all wells for each plate to be updated with kinome data
-    update <- paste(rep(barcode.upd, each=384),
-                    rep(rep(LETTERS[1:16], each=24), length(barcode.upd)),
-                    rep(rep(1:24, 16), length(barcode.upd)), sep=":")
-    # get indices of all wells to be updated
-    ind.gen <- match(update, paste(pathogen.gen$Barcode,
-                                   pathogen.gen$WellRow,
-                                   pathogen.gen$WellColumn, sep=":"))
-    # get indices of all wells containing the data for the update
-    ind.kin <- match(update, paste(pathogen.kin$Barcode,
-                                   pathogen.kin$WellRow,
-                                   pathogen.kin$WellColumn, sep=":"))
-    # update some of the cols
-    pathogen.gen[ind.gen,]$Name <- pathogen.kin[ind.kin,]$GeneName
-    pathogen.gen[ind.gen,]$ID   <- pathogen.kin[ind.kin,]$GeneID
     # set the name the final object will have
     object.name   <- paste0("well.database.", pathogen.name)
     # set file name for the result
@@ -189,15 +166,15 @@ updateDatabaseWells <- function(pathogens=NULL) {
                             substring(pathogen.name, 2),".rda")
     # assign to object name to the object (when the file is loaded later on, it
     # will have this name)
-    assign(object.name, pathogen.gen)
+    assign(object.name, pathogen.red)
     save(list=object.name, file=file.name, compression_level=1)
   }
 
   # load path of genome/kinome aggregate files
   config <- configGet()
   # search for genome aggregate files
-  files <- list.files(path=config$dataStorage$genome, pattern="\\.csv$",
-                      full.names=TRUE)
+  dir <- paste0(config$dataStorage$metaDir, "/", "Aggregates")
+  files <- list.files(path=dir, pattern="\\.csv$", full.names=TRUE)
   # if a list of pathogens ist specified, drop the other files
   if(!is.null(pathogens)) {
     matches <- unlist(lapply(pathogens, grep, files, ignore.case=TRUE))
@@ -207,22 +184,12 @@ updateDatabaseWells <- function(pathogens=NULL) {
     }
     files <- files[matches]
   }
-  # search for kinome aggregate file
-  aux <- list.files(path=config$dataStorage$kinome, pattern="\\.csv$",
-                      full.names=TRUE)
-  if(length(aux) != 1) stop("no supporting kinome data file found")
-  # load kinome aggregate file
-  kin <- read.table(aux, header = TRUE, sep = ";", fill = TRUE,
-                    stringsAsFactors = FALSE, comment.char = "")
-  n.cores <- detectCores()
-  registerDoParallel(cores=detectCores())
-  message("found 1 kinome .csv file:\n", aux, "\nand ", length(files),
-          " genome .csv files; using ", n.cores, " cores.")
+  #registerDoParallel(cores=detectCores())
+  #message("found ", length(files), " aggregate files; using ",
+  #        getDoParWorkers(), " cores.")
+  message("found ", length(files), " aggregate files.")
   # process the data one pathogen at the time
-  result <- foreach(i=1:length(files)) %dopar% {
-    processPathogen(files[[i]], kin)
-  }
-  #message(paste(result$out, collapse="\n"))
+  l_ply(files, processPathogen, .progress = "text")
   invisible(NULL)
 }
 
@@ -250,78 +217,65 @@ updateDatabaseWells <- function(pathogens=NULL) {
 wellDatabaseCoverage <- function(verbose=FALSE, is.startup=FALSE) {
   data(plateDatabase, envir=environment())
   groups      <- unique(plate.database$Group)
-  experiments <- lapply(
-    groups,
-    function(group, dat) {
-      hits <- dat[dat$Group == group,]
-      return(unique(hits$Experiment))
-    },
-    plate.database
-  )
+  experiments <- lapply(groups, function(group, dat) {
+    hits <- dat[dat$Group == group,]
+    return(unique(hits$Experiment))
+  }, plate.database)
   names(experiments) <- groups
-  well.data <- lapply(
-    groups,
-    function(group) {
-      name <- tolower(unlist(strsplit(group, "_"))[1])
-      name <- paste0(toupper(substring(name, 1, 1)),
-        substring(name, 2))
-      dataset.name <- paste0("wellDatabase", name)
-      object.name  <- paste0("well.database.", tolower(name))
-      suppressWarnings(
-        well.db <- try({
-          data(list=dataset.name, envir=environment())
-          get(object.name)
-        },
-        silent = TRUE)
-      )
-      if(class(well.db) == "try-error") {
-        if(is.startup) {
-          packageStartupMessage("for ", name, ", no well database found")
-        } else {
-          warning("for ", name, ", no well database found", call.=FALSE)
-        }
-        return(NULL)
+  
+  well.data <- lapply(groups, function(group) {
+    name <- tolower(unlist(strsplit(group, "_"))[1])
+    name <- paste0(toupper(substring(name, 1, 1)),
+      substring(name, 2))
+    dataset.name <- paste0("wellDatabase", name)
+    object.name  <- paste0("well.database.", tolower(name))
+    suppressWarnings(
+      well.db <- try({
+        data(list=dataset.name, envir=environment())
+        get(object.name)
+      },
+      silent = TRUE)
+    )
+    if(class(well.db) == "try-error") {
+      if(is.startup) {
+        packageStartupMessage("for ", name, ", no well database found")
       } else {
-        barcodes <- unique(well.db$Barcode)
-        n.duplic <- data.frame(table(well.db$Barcode))
-        duplic <- n.duplic[n.duplic$Freq != 384,]
-        if(nrow(duplic) > 0) {
-          if(is.startup) {
-            packageStartupMessage("for ", name, ", some metadata might be ",
-                                  "incomplete for plates:\n",
-                                  paste("  ", duplic[,1], ": ", duplic[,2],
-                                        " wells", sep="", collapse="\n"))
-          } else {
-            warning("for ", name, ", some metadata might be incomplete for ",
-                    "plates:\n", paste("  ", duplic[,1], ": ", duplic[,2],
-                                       " wells", sep="", collapse="\n"),
-                    call.=FALSE)
-          }
-        }
-        return(barcodes)
+        warning("for ", name, ", no well database found", call.=FALSE)
       }
+      return(NULL)
+    } else {
+      barcodes <- unique(well.db$barcode)
+      n.duplic <- data.frame(table(well.db$barcode))
+      duplic <- n.duplic[n.duplic$Freq != 384,]
+      if(nrow(duplic) > 0) {
+        if(is.startup) {
+          packageStartupMessage("for ", name, ", some metadata might be ",
+                                "incomplete for plates:\n",
+                                paste("  ", duplic[,1], ": ", duplic[,2],
+                                      " wells", sep="", collapse="\n"))
+        } else {
+          warning("for ", name, ", some metadata might be incomplete for ",
+                  "plates:\n", paste("  ", duplic[,1], ": ", duplic[,2],
+                                     " wells", sep="", collapse="\n"),
+                  call.=FALSE)
+        }
+      }
+      return(barcodes)
     }
-  )
+  })
   names(well.data) <- groups
 
-  missing <- lapply(
-    groups,
-    function(group, experiments, plate.db, well.db) {
-      res <- lapply(
-        experiments[[group]],
-        function(experiment, plate, well) {
-          res <- setdiff(plate[plate$Experiment == experiment, ]$Barcode, well)
-          if(length(res) > 0) return(res)
-          else return(NULL)
-        },
-        plate.db[plate.db$Group == group,], well.db[[group]]
-      )
-      names(res) <- experiments[[group]]
-      res <- res[!sapply(res, is.null)]
-      return(res)
-    },
-    experiments, plate.database, well.data
-  )
+  missing <- lapply(groups, function(group, experiments, plate.db, well.db) {
+    res <- lapply(experiments[[group]], function(experiment, plate, well) {
+      res <- setdiff(plate[plate$Experiment == experiment, ]$Barcode, well)
+      if(length(res) > 0) return(res)
+      else return(NULL)
+    }, plate.db[plate.db$Group == group,], well.db[[group]])
+    names(res) <- experiments[[group]]
+    res <- res[!sapply(res, is.null)]
+    return(res)
+  }, experiments, plate.database, well.data)
+
   names(missing) <- groups
   if(is.startup) {
     packageStartupMessage("missing metadata for ", length(unlist(missing)),

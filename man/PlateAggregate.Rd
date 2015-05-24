@@ -10,11 +10,12 @@ PlateAggregate(dl)
 \item{dl}{A PlateLocation/WellLocation (DataLocation) object}
 }
 \value{
-A list with slots for kinome (kin) and genome (gen) aggregate data.
+A list with slots for PlateLocation (plate) and aggregate data
+       (data).
 }
 \description{
 Given a PlateLocation/WellLocation object, return the complete and
-unprocessed genome and kinome plate aggregate information.
+unprocessed plate aggregate information.
 }
 \examples{
 plate <- PlateLocation("J101-2C")

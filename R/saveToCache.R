@@ -51,10 +51,9 @@ saveToCache.PlateAggregate <- function(x, force.write=FALSE) {
   loc    <- convertToPlateLocation(x)
   file   <- getCacheFilenameMeta(loc)
   dir    <- dirname(file)
-  result <- list(gen=x$gen, kin=x$kin)
   if(!dir.exists(dir)) dir.create(dir, recursive=TRUE)
   if(!file.exists(file) | force.write) {
-    saveRDS(result, file=file)
+    saveRDS(x$data, file=file)
   }
   invisible(NULL)
 }

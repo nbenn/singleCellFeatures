@@ -20,8 +20,3 @@
   }
   invisible(NULL)
 }
-
-.onUnload <- function(libpath) {
-  options(error=NULL)
-  invisible(NULL)
-}

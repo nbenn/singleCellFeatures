@@ -16,65 +16,78 @@ WellMetadata <- function(well) {
   if(!any(class(well) == "WellLocation")) {
     stop("can only work with WellLocation objects")
   }
-  aggregate <- PlateAggregate(well)
-  gen.aggr  <- aggregate$gen[aggregate$gen$WellName == getWellName(well),]
-  if(nrow(gen.aggr) == 0) {
+  aggregate <- suppressWarnings(PlateAggregate(well))
+  if(is.null(aggregate)) {
+    empty <- TRUE
+  } else {
+    if(getBarcode(well) != getBarcode(aggregate$plate)) {
+      stop("expecting well and PlateAggregate cache to belong to same plate.")
+    }
+    aggregate <- aggregate$data[aggregate$data$WellName == getWellName(well),]
+    if(nrow(aggregate) == 0) empty <- TRUE
+    else empty <- FALSE
+  }
+  if(empty) {
     warning("no aggregate information available: metadata will be ",
             "incomplete for well ", getWellName(well), " on plate ",
             getBarcode(well), ".")
     return(structure(list(
-      barcode             = getBarcode(well),
-      row                 = well$row,
-      col                 = well$column,
-      index               = well$index,
+      plate.barcode       = getBarcode(well),
+      plate.quality       = NA,
+      experiment.name     = well$experiment,
+      experiment.pathogen = getPathogen(well),
+      experiment.geneset  = NA,
+      experiment.library  = NA,
+      well.row            = well$row,
+      well.col            = well$column,
+      well.index          = well$index,
       well.type           = NA,
-      control.type        = NA,
-      control.description = NA,
-      gene.id             = NA,
+      well.quality        = NA,
       gene.name           = NA,
-      sirna.manufacturer  = NA,
-      sirna.code          = NA,
-      sirna.sequence      = NA
-    ), class = c("WellMetadata", "Metadata")))
-  }
-  if(is.null(aggregate$kin)) {
-    warning("no kinome aggregate information available: metadata will be ",
-            "incomplete for well ", getWellName(well), " on plate ",
-            getBarcode(well), ".")
-    return(structure(list(
-      barcode             = gen.aggr$Barcode,
-      row                 = gen.aggr$WellRow,
-      col                 = as.integer(gen.aggr$WellColumn),
-      index               = getWellIndex1D(gen.aggr$WellRow,
-                                           gen.aggr$WellColumn, NULL),
-      well.type           = gen.aggr$WellType,
-      control.type        = NA,
-      control.description = NA,
-      gene.id             = ifelse(gen.aggr$ID == "unknown", NA,
-                                   as.integer(gen.aggr$ID)),
-      gene.name           = gen.aggr$Name,
-      sirna.manufacturer  = gen.aggr$LIBRARY,
-      sirna.code          = gen.aggr$Catalog_number,
-      sirna.sequence      = gen.aggr$Sequence_antisense_5_3
+      gene.id             = NA,
+      sirna.name          = NA,
+      sirna.sequence      = NA,
+      sirna.seed          = NA,
+      sirna.target        = NA,
+      counts.cells        = NA,
+      counts.pathogen     = NA,
+      counts.infection    = NA
     ), class = c("WellMetadata", "Metadata")))
   } else {
-    kin.aggr  <- aggregate$kin[aggregate$kin$WellName == getWellName(well),]
+    if("eCount_oPathogen" %in% colnames(aggregate)) {
+      n.patho <- aggregate$eCount_oPathogen
+    } else if("eCount_oInvasomes" %in% colnames(aggregate)) {
+      n.patho <- aggregate$eCount_oInvasomes
+    } else {
+      n.patho <- NA
+    }
+    if("dInfectionDT_eCount" %in% colnames(aggregate)) {
+      n.inf <- aggregate$dInfectionDT_eCount
+    } else {
+      n.inf <- NA
+    }
     return(structure(list(
-      barcode             = gen.aggr$Barcode,
-      row                 = gen.aggr$WellRow,
-      col                 = as.integer(gen.aggr$WellColumn),
-      index               = getWellIndex1D(gen.aggr$WellRow,
-                                           gen.aggr$WellColumn, NULL),
-      well.type           = gen.aggr$WellType,
-      control.type        = ifelse(kin.aggr$WellType == "siRNA", "none",
-                                   kin.aggr$WellType),
-      control.description = kin.aggr$ControlType,
-      gene.id             = ifelse(gen.aggr$ID == "unknown", NA,
-                                   as.integer(gen.aggr$ID)),
-      gene.name           = gen.aggr$Name,
-      sirna.manufacturer  = gen.aggr$LIBRARY,
-      sirna.code          = gen.aggr$Catalog_number,
-      sirna.sequence      = gen.aggr$Sequence_antisense_5_3
+      plate.barcode       = aggregate$Barcode,
+      plate.quality       = aggregate$PLATE_QUALITY_STATUS,
+      experiment.name     = aggregate$Experiment,
+      experiment.pathogen = aggregate$PATHOGEN,
+      experiment.geneset  = aggregate$GENESET,
+      experiment.library  = aggregate$LIBRARY,
+      well.row            = aggregate$WellRow,
+      well.col            = as.integer(aggregate$WellColumn),
+      well.index          = getWellIndex1D(aggregate$WellRow,
+                                           aggregate$WellColumn, NULL),
+      well.type           = aggregate$WellType,
+      well.quality        = aggregate$WELL_QUALITY_STATUS,
+      gene.name           = aggregate$Name,
+      gene.id             = aggregate$ID_manufacturer,
+      sirna.name          = aggregate$ID_openBIS,
+      sirna.sequence      = aggregate$Sequence_antisense_5_3,
+      sirna.seed          = aggregate$Seed_sequence_antisense_5_3,
+      sirna.target        = aggregate$Sequence_target_sense_5_3,
+      counts.cells        = aggregate$eCount_oCells,
+      counts.pathogen     = n.patho,
+      counts.infection    = n.inf
     ), class = c("WellMetadata", "Metadata")))
   }
 }
@@ -93,9 +106,9 @@ WellMetadata <- function(well) {
 #' 
 #' @export
 PlateMetadata <- function(plate) {
-  checkIfUnique <- function(x, name) {
+  checkIfUnique <- function(x) {
     res <- unique(x)
-    if(length(res) != 1) warning("non unique within-plate variable: ", name)
+    if(length(res) != 1) warning("non unique within-plate variable")
     return(res[1])
   }
 
@@ -103,32 +116,53 @@ PlateMetadata <- function(plate) {
   if(!any(class(plate) == "PlateLocation")) {
     stop("can only work with PlateLocation objects")
   }
-  aggregate <- PlateAggregate(plate)
-  gen.aggr  <- aggregate$gen
-  result <- list(
-    barcode         = checkIfUnique(gen.aggr$Barcode,        "Barcode"),
-    space           = checkIfUnique(gen.aggr$Space,          "Space"),
-    group           = checkIfUnique(gen.aggr$Group,          "Group"),
-    experiment      = checkIfUnique(gen.aggr$Experiment,     "Experiment"),
-    experiment.type = checkIfUnique(gen.aggr$ExperimentType, "ExperimentType"),
-    pathogen        = checkIfUnique(gen.aggr$PATHOGEN,       "Pathogen"),
-    gene.set        = checkIfUnique(gen.aggr$GENESET,        "GeneSet"),
-    replicate       = checkIfUnique(gen.aggr$REPLICATE,      "Replicate"),
-    manufacturer    = checkIfUnique(gen.aggr$LIBRARY,        "Library"),
-    plate.type      = checkIfUnique(gen.aggr$PLATE_TYPE,     "PlateType"),
-    batch           = checkIfUnique(gen.aggr$BATCH,          "Batch")
-  )
-  return(structure(result, class = c("PlateMetadata", "Metadata")))
+  aggr <- suppressWarnings(PlateAggregate(plate))
+  if(is.null(aggr)) {
+    warning("no aggregate information available: metadata will be ",
+            "incomplete for plate ", getBarcode(plate), ".")
+    return(structure(list(
+      plate.barcode        = plate$plate,
+      plate.quality        = NA,
+      plate.type           = NA,
+      experiment.space     = plate$space,
+      experiment.group     = plate$group,
+      experiment.name      = plate$experiment,
+      experiment.pathogen  = getPathogen(plate),
+      experiment.geneset   = NA,
+      experiment.replicate = NA,
+      experiment.library   = NA,
+      experiment.batch     = NA
+    ), class = c("PlateMetadata", "Metadata")))
+  } else {
+    if(getBarcode(plate) != getBarcode(aggr$plate)) {
+      stop("expecting plate and Plateaggr cache to have same barcode")
+    }
+    aggr <- aggr$data
+    return(structure(list(
+      plate.barcode        = checkIfUnique(aggr$Barcode),
+      plate.quality        = checkIfUnique(aggr$PLATE_QUALITY_STATUS),
+      plate.type           = checkIfUnique(aggr$PLATE_TYPE),
+      experiment.space     = checkIfUnique(aggr$Space),
+      experiment.group     = checkIfUnique(aggr$Group),
+      experiment.name      = checkIfUnique(aggr$Experiment),
+      experiment.pathogen  = checkIfUnique(aggr$PATHOGEN),
+      experiment.geneset   = checkIfUnique(aggr$GENESET),
+      experiment.replicate = checkIfUnique(aggr$REPLICATE),
+      experiment.library   = checkIfUnique(aggr$LIBRARY),
+      experiment.batch     = checkIfUnique(aggr$BATCH)
+    ), class = c("PlateMetadata", "Metadata")))
+  }
 }
 
 #' Constructor for PlateAggregate objects
 #' 
 #' Given a PlateLocation/WellLocation object, return the complete and
-#' unprocessed genome and kinome plate aggregate information.
+#' unprocessed plate aggregate information.
 #'
 #' @param dl A PlateLocation/WellLocation (DataLocation) object
 #'
-#' @return A list with slots for kinome (kin) and genome (gen) aggregate data.
+#' @return A list with slots for PlateLocation (plate) and aggregate data
+#'        (data).
 #'
 #' @examples
 #' plate <- PlateLocation("J101-2C")
@@ -144,45 +178,41 @@ PlateAggregate <- function(dl) {
   }
   # search for aggregate chache file
   if(file.exists(getCacheFilenameMeta(dl))) {
-    cache <- readRDS(getCacheFilenameMeta(dl))
-    result <- c(cache, list(met=dl))
-    return(structure(result, class = c("PlateAggregate", "Metadata")))
-  } else {
-    # figure out pathogen name
-    patho.name <- getPathogen(dl)
-    # get path info
-    config <- configGet()
-    # get genome and kinome aggreagtes
-    gen.file <- list.files(path=config$dataStorage$genome, pattern=patho.name,
-                           ignore.case=TRUE, full.names=TRUE)
-    kin.file <- list.files(path=config$dataStorage$kinome, pattern="\\.csv$",
-                           full.names=TRUE)
-    if (length(gen.file) != 1) {
-      stop("found ", length(gen.file), " genome aggregate files instead of 1.")
-    }
-    if (length(kin.file) != 1) {
-      stop("found ", length(kin.file), " kinome aggregate files instead of 1.")
-    }
-    # load metadata files
-    gen.aggr  <- read.delim(gen.file, as.is=TRUE)
-    kin.aggr  <- read.table(kin.file, header = TRUE, sep = ";", fill = TRUE,
-                            stringsAsFactors = FALSE, comment.char = "")
+    cache  <- readRDS(getCacheFilenameMeta(dl))
+    result <- structure(list(plate=dl, data=cache),
+                        class = c("PlateAggregate", "Metadata"))
+    return(result)
+  }
+  # figure out pathogen name
+  patho.name <- getPathogen(dl)
+  # get path info
+  config <- configGet()
+  # get genome and kinome aggreagtes
+  aggregate.name <- list.files(
+    path=paste0(config$dataStorage$metaDir, "/", "Aggregates"),
+    pattern=paste0(patho.name, "report_.*\\.csv"),
+    ignore.case=TRUE, full.names=TRUE
+  )
+  if (length(aggregate.name) != 1) {
+    stop("found ", length(aggregate.name), " aggregate files instead of 1.")
+  }
+  # load metadata files
+  aggregate.file <- read.delim(aggregate.name, stringsAsFactors=FALSE)
 
-    # drop all except the dl of interest
-    gen.aggr <- gen.aggr[gen.aggr$Barcode == getBarcode(dl),]
-    kin.aggr <- kin.aggr[kin.aggr$Barcode == getBarcode(dl),]
-    if (nrow(gen.aggr) != 384) {
-      warning("found genome aggregate information on ", nrow(gen.aggr),
-              " wells instead of 384.")
-    }
-    if (nrow(kin.aggr) != 384) {
-      warning("found kinome aggregate information on ", nrow(kin.aggr),
-              " wells instead of 384.")
-    }
-    if (nrow(kin.aggr) == 0) kin.aggr <- NULL
-    result <- structure(list(gen=gen.aggr, kin=kin.aggr, met=dl),
+  # drop all except the dl of interest
+  aggregate.file <- aggregate.file[aggregate.file$Barcode == getBarcode(dl),]
+  if (nrow(aggregate.file) != 384) {
+    warning("found genome aggregate information on ", nrow(aggregate.file),
+            " wells instead of 384.")
+  }
+  if(nrow(aggregate.file) > 0) {
+    result <- structure(list(plate=dl, data=aggregate.file),
                         class = c("PlateAggregate", "Metadata"))
     saveToCache(result)
     return(result)
+  } else {
+    warning("could not find any aggregate information for plate ",
+            getBarcode(dl))
+    return(NULL)
   }
 }

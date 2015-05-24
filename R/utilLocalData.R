@@ -76,3 +76,23 @@ deleteAllWellCaches <- function() {
   })
   invisible(NULL)
 }
+
+#' Remove all metadata caches
+#'
+#' Due to generating metadata caches being fairly inexpensive and the
+#' circumstance that they are downstream to Data object creation (changes in
+#' Data/Metadata object specifications often require all metadata caches to be
+#' rebuilt), this function purges all metadata caches.
+#' 
+#' @return NULL (invisibly).
+#' 
+#' @examples
+#' deleteAllWellCaches()
+#' 
+#' @export
+deleteAllMetadataCaches <- function() {
+  l_ply(getAllLocalPlates(), function(plate) {
+    unlink(getCacheFilenameMeta(plate))
+  })
+  invisible(NULL)
+}
