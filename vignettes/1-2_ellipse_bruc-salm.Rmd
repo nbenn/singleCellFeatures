@@ -1,0 +1,127 @@
+---
+title: "1.2 Brucella/Salmonella Ellipses"
+author: "Nicolas Bennett"
+date: "`r Sys.Date()`"
+output: rmarkdown::pdf_document
+vignette: >
+  %\VignetteIndexEntry{1.2 Brucella/Salmonella Ellipses}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r, setup, echo=FALSE}
+suppressPackageStartupMessages(library(knitr))
+suppressPackageStartupMessages(library(singleCellFeatures))
+suppressPackageStartupMessages(library(ggplot2))
+suppressPackageStartupMessages(library(RColorBrewer))
+suppressPackageStartupMessages(library(gridExtra))
+suppressPackageStartupMessages(library(scales))
+options(scipen=1, digits=2, singleCellFeatures.progressBars="none")
+opts_chunk$set(fig.height=10, fig.width=14)
+```
+
+The following investigation should shed a light on the quesion whether cell location within an image has an influence on its features. If such an influence is visible, it may have to be considered to remove some cells (e.g. in image or well corners). As an extension to previous investigations, not a single ellipse is used to bin cells, but five ellipses of equal area.
+
+```{r, loadData, cache=TRUE}
+features <- c("^Cells.Location_Center_X$",
+              "^Cells.Location_Center_Y$",
+              "^Cells.AreaShape_Perimeter$",
+              "^Cells.Texture_InfoMeas1_CorrActin_3$",
+              "^Cells.Texture_InfoMeas2_CorrActin_3$",
+              "^Cells.Intensity_MeanIntensity_CorrDNA$")
+plates   <- list(PlateLocation("KB2-01-1W"),
+                 PlateLocation("KB01-2L"),
+                 PlateLocation("J107-2D"),
+                 PlateLocation("KB2-02-1C"),
+                 PlateLocation("KB01-1B"),
+                 PlateLocation("J104-2L"))
+data     <- getSingleCellData(plates, features)
+
+augm  <- lapply(data, augmentCordinateFeatures, ellipse=5, facet=NULL,
+                center.dist=FALSE)
+melt  <- lapply(augm, meltData)
+cells <- lapply(melt, function(x) return(x$mat$Cells))
+rm(features, plates, data, augm, melt)
+colnames(cells[[1]])
+```
+
+The image sizes are identical for 6 image per well (x coord in `r min(cells[[2]]$Cells.Location_Center_X)`, `r max(cells[[2]]$Cells.Location_Center_X)`] and y coord in [`r min(cells[[2]]$Cells.Location_Center_Y)`, `r max(cells[[2]]$Cells.Location_Center_X)`]) and 9 image per well datasets (x coord in [`r min(cells[[1]]$Cells.Location_Center_X)`, `r max(cells[[1]]$Cells.Location_Center_X)`] and y coord in [`r min(cells[[1]]$Cells.Location_Center_Y)`, `r max(cells[[1]]$Cells.Location_Center_Y)`]).
+
+```{r scatterPlot, echo=FALSE}
+set.seed(7)
+thin <- sample.int(nrow(cells[[1]]), nrow(cells[[1]])/20)
+ggplot(cells[[1]][thin,], aes(x=Cells.Location_Center_X, 
+                             y=Cells.Location_Center_Y)) +
+  geom_point(aes(colour=factor(Cells.Location_In_Ellipse))) +
+  scale_color_brewer(name="Ellipse boundaries",
+                    palette="YlGnBu") +
+  theme_bw(base_size = 18) + 
+  theme(legend.position="bottom") +
+  xlab("x coordinate") + ylab("y coordinate") +
+  ggtitle("KB2-01-1W")
+```
+
+To see if the separation of cells along the ellipse boundary is performed correctly, the previous plot shows x vs. y coordinates and cells are colored by their membership to an ellipse. Only a randomly selected subset of size 1/20 is printed.
+
+```{r ellipseDens, echo=FALSE, warning=FALSE, fig.height=7}
+grid_arrange_shared_legend <- function(..., title) {
+    plots <- list(...)
+    g <- ggplotGrob(plots[[1]] + theme(legend.position="bottom"))$grobs
+    legend <- g[[which(sapply(g, function(x) x$name) == "guide-box")]]
+    lheight <- sum(legend$height)
+    grid.arrange(
+        do.call(arrangeGrob, lapply(plots, function(x)
+            x + theme(legend.position="none"))),
+        legend,
+        ncol = 1,
+        main = title,
+        heights = unit.c(unit(1, "npc") - lheight, lheight))
+}
+
+plots <- function(index, title) {
+  p1 <- ggplot(cells[[index]], aes(x=Cells.AreaShape_Perimeter,
+                                   color=factor(Cells.Location_In_Ellipse))) +
+    geom_density() +
+    xlim(0, 2000) +
+    theme_bw(base_size=18) + 
+    scale_color_brewer(name="Ellipse boundaries",
+                      palette="YlGnBu") +
+    scale_y_continuous(label=scientific_format()) +
+    xlab("Cell perimeter")
+  p2 <- ggplot(cells[[index]], aes(x=Cells.Intensity_MeanIntensity_CorrDNA,
+                                   color=factor(Cells.Location_In_Ellipse))) +
+    geom_density() +
+    xlim(0, 0.2) +
+    theme_bw(base_size=18) + 
+    scale_color_brewer(name="Ellipse boundaries",
+                      palette="YlGnBu") +
+    scale_y_continuous(label=scientific_format()) +
+    xlab("Integrated intensity CorrDNA for cells")
+  p3 <- ggplot(cells[[index]], aes(x=Cells.Texture_InfoMeas1_CorrActin_3,
+                                   color=factor(Cells.Location_In_Ellipse))) +
+    geom_density() +
+    xlim(-0.6, 0) +
+    theme_bw(base_size=18) + 
+    scale_color_brewer(name="Ellipse boundaries",
+                      palette="YlGnBu") +
+    scale_y_continuous(label=scientific_format()) +
+    xlab("InfoMeas1 CorrActin for cells")
+  p4 <- ggplot(cells[[index]], aes(x=Cells.Texture_InfoMeas2_CorrActin_3,
+                                   color=factor(Cells.Location_In_Ellipse))) +
+    geom_density() +
+    theme_bw(base_size=18) + 
+    scale_color_brewer(name="Ellipse boundaries",
+                      palette="YlGnBu") +
+    scale_y_continuous(label=scientific_format()) +
+    xlab("InfoMeas2 CorrActin for cells")
+  grid_arrange_shared_legend(p1, p2, p3, p4, title=title)
+}
+plots(1, "KB2-01-1W")
+plots(2, "KB01-2L")
+plots(3, "J107-2D")
+plots(4, "KB2-02-1C")
+plots(5, "KB01-1B")
+plots(6, "J104-2L")
+```
+
+For each plate, the four available features are shown in separate plots as densities with separate lines for cells in different regions. The border region does not appear to systematically behave much different than the more central ones, despite some individual deviations.

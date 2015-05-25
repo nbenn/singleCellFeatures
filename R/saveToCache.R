@@ -36,12 +36,16 @@ saveToCache.MatData <- function(x, force.write=FALSE) {
 
 #' @export
 saveToCache.WellData <- function(x, force.write=FALSE) {
-  loc  <- convertToWellLocation(x)
-  file <- getCacheFilenameData(loc)
-  dir  <- dirname(file)
-  if(!dir.exists(dir)) dir.create(dir, recursive=TRUE)
-  if(!file.exists(file) | force.write) {
-    saveRDS(x, file=file, compress="xz")
+  if(checkCompletenessFeature(x)$result & checkCompletenessImage(x)) {
+    loc  <- convertToWellLocation(x)
+    file <- getCacheFilenameData(loc)
+    dir  <- dirname(file)
+    if(!dir.exists(dir)) dir.create(dir, recursive=TRUE)
+    if(!file.exists(file) | force.write) {
+      saveRDS(x, file=file, compress="xz")
+    }
+  } else {
+    message("well data is incomplete: not writing cache file.")
   }
   invisible(NULL)
 }

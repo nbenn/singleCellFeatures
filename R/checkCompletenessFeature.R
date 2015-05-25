@@ -19,6 +19,8 @@ checkCompletenessFeature <- function(x) {
 
 #' @export
 checkCompletenessFeature.Data <- function(x) {
+  ignored.feats <- c("Bacteria.SubObjectFlag", "Batch_handles",
+                     "Image.ModuleError_43CreateBatchFiles")
   plate <- convertToPlateLocation(x)
   # check for completenes of single cell data
   pathogen <- getPathogen(plate)
@@ -31,16 +33,25 @@ checkCompletenessFeature.Data <- function(x) {
             "Please add one using updateDatabaseFeatures.")
   }
   missing <- setdiff(feat.exp, feat.dat)
+  ignored <- missing[missing %in% ignored.feats]
+  missing <- missing[!missing %in% ignored.feats]
   superfl <- setdiff(feat.dat, feat.exp)
+  result <- TRUE
+  if(length(ignored) > 0) {
+    message(length(ignored), " ignored feature(s) missing (",
+            getBarcode(plate), "):\n  ", paste(ignored, collapse="\n  "))
+  }
   if(length(missing) > 0) {
     warning("detected ", length(missing), " missing feature(s) (",
             getBarcode(plate), "):\n  ", paste(missing, collapse="\n  "))
+    result <- FALSE
   }
   if(length(superfl) > 0) {
     warning("detected ", length(superfl), " superfluous feature(s) (",
             getBarcode(plate), "):\n  ", paste(superfl, collapse="\n  "))
+    result <- FALSE
   }
-  return(list(missing = missing, superfluous = superfl))
+  return(list(missing = missing, superfluous = superfl, result=result))
 }
 
 #' @export
