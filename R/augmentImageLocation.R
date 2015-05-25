@@ -20,7 +20,8 @@ augmentImageLocation <- function(x) {
 
 #' @export
 augmentImageLocation.PlateData <- function(x) {
-  x$data <- lapply(x$data, augmentImageLocation)
+  x$data <- llply(x$data, augmentImageLocation,
+                  .progress=getOption("singleCellFeatures.progressBars"))
   return(x)
 }
 
@@ -39,7 +40,10 @@ augmentImageLocation.ImageData <- function(x) {
   if(n.img == 6) {
     img.group <- rep(img.group[1:3], 2)
   }
-  x$data.vec$Image[["Image.Group"]] <- img.group[img.no]
+  img.group <- img.group[img.no]
+  dim(img.group) <- c(1, 1)
+  colnames(img.group) <- "Image.Group"
+  x$data.vec$Image <- cbind(x$data.vec$Image, img.group)
 
   x$data.mat <- lapply(x$data.mat, function(group) {
     index.x <- grep("Location_Center_X", colnames(group))

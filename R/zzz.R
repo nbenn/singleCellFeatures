@@ -1,8 +1,9 @@
 .onLoad <- function(libname, pkgname) {
   op <- options()
   op.singleCellFeatures <- list(
-    singleCellFeatures.configPath = paste0("~", "/",
-                                           ".singleCellFeaturesConfig")
+    singleCellFeatures.configPath   = paste0("~", "/",
+                                             ".singleCellFeaturesConfig"),
+    singleCellFeatures.progressBars = "text"
   )
   toset <- !(names(op.singleCellFeatures) %in% names(op))
   if(any(toset)) options(op.singleCellFeatures[toset])

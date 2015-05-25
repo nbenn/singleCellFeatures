@@ -18,7 +18,8 @@ suppressPackageStartupMessages(library(ggplot2))
 suppressPackageStartupMessages(library(RColorBrewer))
 suppressPackageStartupMessages(library(gridExtra))
 suppressPackageStartupMessages(library(scales))
-options(scipen = 1, digits = 2)
+
+options(scipen=1, digits=2, singleCellFeatures.progressBars="none")
 ```
 
 The following investigation should shed a light on the quesion whether the location of an object (such as a cell) within an image or well has an influence on its features. If such an influence is visible, it may have to be considered to remove some objects (e.g. in image or well corners) or possibly even entire images (out of 9 image wells, maybe only the center image is usable).
@@ -39,7 +40,7 @@ augm <- augmentCordinateFeatures(data, ellipse=1, facet=c(14, 10),
                                  center.dist=TRUE)
 augm <- augmentImageLocation(augm)
 melt <- meltData(augm)
-cells <- melt$Cells
+cells <- melt$mat$Cells
 colnames(cells)
 rm(features, data, augm, melt)
 ```
@@ -202,7 +203,7 @@ grid.arrange(p5, p6, p7, p8, nrow = 2)
 
 To compare feature distribution among different images, density estimated are plottes in the following two images. First, for visual clarity, the nine images are grouped according to well border length: images 1, 3, 7 and 9 are corer images, while images 2, 4, 6 and 8 have a well border along one side. Image 5 is located in the well center.
 
-```{r, imgDens, echo=FALSE, warning=FALSE, fig.height=7}
+```{r, imgDens, echo=FALSE, warning=FALSE, fig.height=7.5}
 r <- brewer.pal(8, "Reds")
 g <- brewer.pal(8, "Greens")
 b <- brewer.pal(8, "Blues")

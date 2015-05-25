@@ -26,8 +26,11 @@ augmentCordinateFeatures <- function(x, ...) {
 augmentCordinateFeatures.PlateData <- function(x, ellipse=NULL, facet=NULL,
                                                center.dist=NULL) {
   output <- augmentCordinateFeatures(x$data[[1]], ellipse, facet, center.dist)
-  suppressMessages(x$data <- lapply(x$data, augmentCordinateFeatures, ellipse,
-                   facet, center.dist))
+  x$data <- llply(x$data, function(dat, ell, fac, cen) {
+    suppressMessages(res <- augmentCordinateFeatures(dat, ell, fac, cen))
+    return(res)
+  }, ellipse, facet, center.dist,
+  .progress=getOption("singleCellFeatures.progressBars"))
   return(x)
 }
 

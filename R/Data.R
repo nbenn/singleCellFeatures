@@ -177,7 +177,8 @@ readMatFeatureHelper <- function(path) {
   if (length(filenames) == 0) stop("no .mat files found.")
   # get the data
   message("fetching ", length(filenames), " files")
-  data <- llply(filenames, readFeatureFile, .progress = "text")
+  data <- llply(filenames, readFeatureFile,
+                .progress=getOption("singleCellFeatures.progressBars"))
   import.name <- lapply(filenames, getFeatureName)
   names(data) <- import.name
 
@@ -238,6 +239,13 @@ PlateData <- function(plate, select=NULL, drop=NULL, data=NULL) {
   # determine if wells contain 9 or 6 images
   n.imgs <- getNoImgPerWell(data)
   tot.nimgs <- n.imgs * 384
+  # get cell counts
+  if(is.null(data$data$Image.Count_Cells)) {
+    warning("could not find \"Image.Count_Cells\" feature.")
+    cell.counts <- rep(NA, tot.nimgs)
+  } else {
+    cell.counts <- unlist(data$data$Image.Count_Cells)
+  }
   # remove specified features
   if (!is.null(select) | !is.null(drop)) {
     data <- extractFeatures(data, select, drop)
@@ -264,13 +272,6 @@ PlateData <- function(plate, select=NULL, drop=NULL, data=NULL) {
   if (length(problems) > 0) {
     stop(length(problems), " features still are of incorrect length:\n  ",
          paste(names(data$data)[problems], collapse="\n  "))
-  }
-  # get cell counts
-  if(is.null(data$data$Image.Count_Cells)) {
-    warning("could not find \"Image.Count_Cells\" feature.")
-    cell.counts <- rep(NA, tot.nimgs)
-  } else {
-    cell.counts <- unlist(data$data$Image.Count_Cells)
   }
 
   # for each feature, return the total number of objects or 0 if it's a list of
@@ -398,7 +399,10 @@ PlateData <- function(plate, select=NULL, drop=NULL, data=NULL) {
 
   # the following step will need a lot of memory
   gc()
-  message("building ImageData objects:")
+  progress.bar <- getOption("singleCellFeatures.progressBars")
+  if(progress.bar != "none") {
+    message("building ImageData objects:")
+  }
   # tot.nimgs ImageData objects are built from the complete plate data
   data$data <- llply(1:tot.nimgs, function(ind, data, name, n.imgs, quants, 
     counts) {
@@ -471,7 +475,7 @@ PlateData <- function(plate, select=NULL, drop=NULL, data=NULL) {
     }
     return(ImageData(name, ind, n.imgs, quants, counts[ind], vec, mat, lst))
   }, data$data, getBarcode(plate), n.imgs, data$meta$counts.quantiles,
-  cell.counts, .progress = "text")
+  cell.counts, .progress=progress.bar)
   # free no longer needed memory
   gc()
 
@@ -486,13 +490,15 @@ PlateData <- function(plate, select=NULL, drop=NULL, data=NULL) {
   }
   # get all well metadata and build 384 WellData objects from the 3456
   # ImageData objects
-  message("building WellData objects:")
+  if(progress.bar != "none") {
+    message("building WellData objects:")
+  }
   data$data <- llply(1:384, function(ind, wells, data) {
     well <- WellLocation(wells[ind,1], wells[ind,2], wells[ind,3])
     imgs <- data[(ind - 1) * n.imgs + 1:n.imgs]
     names(imgs) <- img.names
     return(WellData(well, imgs))
-  }, all.wells, data$data, .progress = "text")
+  }, all.wells, data$data, .progress=progress.bar)
   names(data$data) <- paste0(rep(LETTERS[1:16], each=24), rep(1:24, 16))
   # return a PlateData object
   return(structure(data, class = c("PlateData", "Data")))

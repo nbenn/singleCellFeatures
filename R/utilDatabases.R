@@ -189,7 +189,8 @@ updateDatabaseWells <- function(pathogens=NULL) {
   #        getDoParWorkers(), " cores.")
   message("found ", length(files), " aggregate files.")
   # process the data one pathogen at the time
-  l_ply(files, processPathogen, .progress = "text")
+  l_ply(files, processPathogen,
+        .progress=getOption("singleCellFeatures.progressBars"))
   invisible(NULL)
 }
 

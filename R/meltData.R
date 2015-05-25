@@ -21,10 +21,15 @@ meltData.PlateData <- function(x) {
   grps.vec <- names(x$data[[1]]$data[[1]]$data.vec)
   grps.mat <- names(x$data[[1]]$data[[1]]$data.mat)
   grps.lst <- names(x$data[[1]]$data[[1]]$data.lst)
-  message("extracting features from wells/images:")
-  all      <- unlist(llply(x$data, meltData, .progress = "text"),
-                                 recursive=FALSE)
-  message("building vec feature data frame.")
+  progress.bar <- getOption("singleCellFeatures.progressBars")
+  if(progress.bar != "none") {
+    message("extracting features from wells/images:")
+  }
+  all      <- unlist(llply(x$data, meltData, .progress=progress.bar),
+                     recursive=FALSE)
+  if(progress.bar != "none") {
+    message("building vec feature data frame.")
+  }
   res.vec  <- llply(grps.vec, function(group, data) {
     regexp <- paste0("^[A-P]([1-9]|1[0-9]|2[0-4])\\.vec\\.", group, "$")
     res <- data[grep(regexp, names(data))]
@@ -32,7 +37,9 @@ meltData.PlateData <- function(x) {
     return(res)
   }, unlist(all[grep("^[A-P]([1-9]|1[0-9]|2[0-4])\\.vec$", names(all))],
             recursive=FALSE))
-  message("building mat feature data frame.")
+  if(progress.bar != "none") {
+    message("building mat feature data frame.")
+  }
   res.mat  <- llply(grps.mat, function(group, data) {
     regexp <- paste0("^[A-P]([1-9]|1[0-9]|2[0-4])\\.mat\\.", group, "$")
     res <- data[grep(regexp, names(data))]
@@ -40,7 +47,9 @@ meltData.PlateData <- function(x) {
     return(res)
   }, unlist(all[grep("^[A-P]([1-9]|1[0-9]|2[0-4])\\.mat$", names(all))],
             recursive=FALSE))
-  message("building lst feature matrices.")
+  if(progress.bar != "none") {
+    message("building lst feature matrices.")
+  }
   res.lst  <- llply(grps.lst, function(group, data) {
     regexp <- paste0("^[A-P]([1-9]|1[0-9]|2[0-4])\\.lst\\.", group, "$")
     res <- data[grep(regexp, names(data))]
@@ -133,14 +142,13 @@ meltData.WellData <- function(x) {
 meltData.ImageData <- function(x) {
   well.index  <- getWellIndex1D(x$well.row, x$well.col, NULL, x$image.total)
   well.name   <- paste0(x$well.row, x$well.col)
-
   res.vec <- lapply(x$data.vec, function(group) {
     if (nrow(group) > 0) {
-      res <- cbind(group, x$image.index, well.index, well.name, x$plate,
-                   stringsAsFactors=FALSE)
-      colnames(res) <- c(colnames(group), "Image.Index", "Well.Index",
-                         "Well.Name", "Plate.Barcode")
-      return(res)
+      newcols <- data.frame(x$image.index, well.index, well.name,
+                            x$plate, stringsAsFactors=FALSE)
+      colnames(newcols) <- c("Image.Index", "Well.Index", "Well.Name",
+                             "Plate.Barcode")
+      return(cbind(group, newcols))
     } else {
       return(NULL)
     }
@@ -157,8 +165,8 @@ meltData.ImageData <- function(x) {
       plate          <- rep(x$plate, n.rows)
       dim(plate)     <- c(n.rows, 1)
 
-      if("Image.Group" %in% names(x$data.vec$Image)) {
-        image.group      <- rep(x$data.vec$Image[["Image.Group"]], n.rows)
+      if("Image.Group" %in% colnames(x$data.vec$Image)) {
+        image.group      <- rep(x$data.vec$Image[1,"Image.Group"], n.rows)
         dim(image.group) <- c(n.rows, 1)
         info      <- data.frame(image.ind, well.ind, well.nme, plate,
                                 image.group, stringsAsFactors=FALSE)
