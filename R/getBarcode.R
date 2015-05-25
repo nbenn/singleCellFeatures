@@ -21,15 +21,15 @@ getBarcode.DataLocation <- function(x) {
 
 #' @export
 getBarcode.MatData <- function(x) {
-  return(x$meta$barcode)
+  return(x$meta$plate.barcode)
 }
 #' @export
 getBarcode.PlateData <- function(x) {
-  return(x$meta$barcode)
+  return(x$meta$plate.barcode)
 }
 #' @export
 getBarcode.WellData <- function(x) {
-  return(x$meta$barcode)
+  return(x$meta$plate.barcode)
 }
 #' @export
 getBarcode.ImageData <- function(x) {

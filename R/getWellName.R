@@ -22,7 +22,7 @@ getWellName.WellLocation <- function(x) {
 
 #' @export
 getWellName.WellData <- function(x) {
-  return(paste0(x$meta$row, x$meta$col))
+  return(paste0(x$meta$well.row, x$meta$well.col))
 }
 
 #' @export

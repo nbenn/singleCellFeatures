@@ -96,7 +96,9 @@ WellMetadata <- function(well) {
 #' 
 #' Given a PlateLocation object, the corresponding metadata is compiled
 #'
-#' @param well A PlateLocation object
+#' @param plate      A PlateLocation object
+#' @param quantiles  A list containing the upper and lower 5% quantiles of cell
+#'                   counts.
 #'
 #' @return A PlateMetadata object: a list with slots describing conditions on
 #'         a plate.
@@ -105,7 +107,7 @@ WellMetadata <- function(well) {
 #' meta <- PlateMetadata(PlateLocation("J107-2C"))
 #' 
 #' @export
-PlateMetadata <- function(plate) {
+PlateMetadata <- function(plate, quantiles=NULL) {
   checkIfUnique <- function(x) {
     res <- unique(x)
     if(length(res) != 1) warning("non unique within-plate variable")
@@ -115,6 +117,15 @@ PlateMetadata <- function(plate) {
   # input validation
   if(!any(class(plate) == "PlateLocation")) {
     stop("can only work with PlateLocation objects")
+  }
+  if(is.null(quantiles)) {
+    warning("with no quantiles supplied, some slots cannot be completed.")
+    quantiles <- c(NA, NA)
+    names(quantiles) <- c("5%", "95%")
+  } else {
+    if(!is.numeric(quantiles)) {
+      stop("expecting a numeric vector for quantiles parameter.")
+    }
   }
   aggr <- suppressWarnings(PlateAggregate(plate))
   if(is.null(aggr)) {
@@ -131,7 +142,8 @@ PlateMetadata <- function(plate) {
       experiment.geneset   = NA,
       experiment.replicate = NA,
       experiment.library   = NA,
-      experiment.batch     = NA
+      experiment.batch     = NA,
+      counts.quantiles     = quantiles
     ), class = c("PlateMetadata", "Metadata")))
   } else {
     if(getBarcode(plate) != getBarcode(aggr$plate)) {
@@ -149,7 +161,8 @@ PlateMetadata <- function(plate) {
       experiment.geneset   = checkIfUnique(aggr$GENESET),
       experiment.replicate = checkIfUnique(aggr$REPLICATE),
       experiment.library   = checkIfUnique(aggr$LIBRARY),
-      experiment.batch     = checkIfUnique(aggr$BATCH)
+      experiment.batch     = checkIfUnique(aggr$BATCH),
+      counts.quantiles     = quantiles
     ), class = c("PlateMetadata", "Metadata")))
   }
 }

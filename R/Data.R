@@ -23,6 +23,17 @@
 #' 
 #' @export
 MatData <- function(plate, force.download=FALSE) {
+  getCellCountInfo <- function(x) {
+    if(!is.list(x)) stop("expecting a list as input.")
+    if(is.null(x$Image.Count_Cells)) {
+      warning("could not find \"Image.Count_Cells\" feature.")
+      res <- c(NA, NA)
+      names(res) <- c("5%", "95%")
+      return(res)
+    } else {
+      return(quantile(unlist(x$Image.Count_Cells), c(0.05, 0.95)))
+    }
+  }
 
   # input validation
   if (!any(class(plate) == "PlateLocation")) {
@@ -32,7 +43,8 @@ MatData <- function(plate, force.download=FALSE) {
   if (file.exists(getCacheFilenameData(plate)) & !force.download) {
     message("reading plate chache file.")
     data <- readRDSMC(getCacheFilenameData(plate))
-    result <- structure(list(meta = PlateMetadata(plate),
+    countQuants <- getCellCountInfo(data)
+    result <- structure(list(meta = PlateMetadata(plate, countQuants),
                              data = data), class = c("MatData", "Data"))
   } else {
     data      <- dowloadFeatureHelper(plate, "cc", force.download)
@@ -48,7 +60,8 @@ MatData <- function(plate, force.download=FALSE) {
       data <- c(data, infection)
     }
 
-    result <- structure(list(meta = PlateMetadata(plate),
+    countQuants <- getCellCountInfo(data)
+    result <- structure(list(meta = PlateMetadata(plate, countQuants),
                              data = data), class = c("MatData", "Data"))
     saveToCache(result, force.write=force.download)
     dirs <- dir(getLocalPath(plate), "^HCS_ANALYSIS_CELL_", full.names=TRUE)
@@ -58,8 +71,8 @@ MatData <- function(plate, force.download=FALSE) {
   # remove features that have zero length
   ind.rem <- which(sapply(result$data, function(x) length(x) == 0))
   if (length(ind.rem) > 0) {
-    message("removing ", length(ind.rem), " features (length == 0):\n",
-            paste(names(result$data)[ind.rem], collapse="\n"))
+    message("removing ", length(ind.rem), " features (length == 0):\n  ",
+            paste(names(result$data)[ind.rem], collapse="\n  "))
     result$data <- result$data[-ind.rem]
   }
   # check if feature set is complete
@@ -232,8 +245,8 @@ PlateData <- function(plate, select=NULL, drop=NULL, data=NULL) {
   # remove features contain only 1 entry
   ind.rem <- which(sapply(data$data, function(x) length(x) == 1))
   if (length(ind.rem) > 0) {
-    message("removing ", length(ind.rem), " features (length == 1):\n",
-          paste(names(data$data)[ind.rem], collapse="\n"))
+    message("removing ", length(ind.rem), " features (length == 1):\n  ",
+          paste(names(data$data)[ind.rem], collapse="\n  "))
     data$data <- data$data[-ind.rem]
   }
   # add zeros to the end of features which are shorter than 2304/3456
@@ -249,8 +262,15 @@ PlateData <- function(plate, select=NULL, drop=NULL, data=NULL) {
   # check if all features ok
   problems <- which(sapply(data$data, function(x) length(x) != tot.nimgs))
   if (length(problems) > 0) {
-    stop(length(problems), " features still are of incorrect length:\n",
-         paste(names(data$data)[problems], collapse="\n"))
+    stop(length(problems), " features still are of incorrect length:\n  ",
+         paste(names(data$data)[problems], collapse="\n  "))
+  }
+  # get cell counts
+  if(is.null(data$data$Image.Count_Cells)) {
+    warning("could not find \"Image.Count_Cells\" feature.")
+    cell.counts <- rep(NA, tot.nimgs)
+  } else {
+    cell.counts <- unlist(data$data$Image.Count_Cells)
   }
 
   # for each feature, return the total number of objects or 0 if it's a list of
@@ -380,7 +400,8 @@ PlateData <- function(plate, select=NULL, drop=NULL, data=NULL) {
   gc()
   message("building ImageData objects:")
   # tot.nimgs ImageData objects are built from the complete plate data
-  data$data <- llply(1:tot.nimgs, function(ind, data, name, n.imgs) {
+  data$data <- llply(1:tot.nimgs, function(ind, data, name, n.imgs, quants, 
+    counts) {
     if(length(data$vec) > 0) {
       vec <- lapply(data$vec, function(group, ind) {
         return(data.frame(lapply(group, function(feature, i) {
@@ -448,8 +469,9 @@ PlateData <- function(plate, select=NULL, drop=NULL, data=NULL) {
       }, lst$PercentTouchingNeighbors, names(lst$PercentTouchingNeighbors),
          list(mats=lst$IdentityOfNeighbors), SIMPLIFY = FALSE)
     }
-    return(ImageData(name, ind, n.imgs, vec, mat, lst))
-  }, data$data, getBarcode(plate), n.imgs, .progress = "text")
+    return(ImageData(name, ind, n.imgs, quants, counts[ind], vec, mat, lst))
+  }, data$data, getBarcode(plate), n.imgs, data$meta$counts.quantiles,
+  cell.counts, .progress = "text")
   # free no longer needed memory
   gc()
 
@@ -537,15 +559,20 @@ WellData <- function(well, data=NULL) {
 #' be a WellLocation object, index the image index inside the well and n.img to
 #' be NULL, as this has already been determined.
 #'
-#' @param barcode Either the barcode of the plate or a WellLocation object
-#'                corresponding to the image's well
-#' @param index   Either the linearized index of the image within the whole
-#'                plate or the image index within the well
-#' @param n.img   Number of images per well (either 6 or 9)
-#' @param vec     All data than contains only a single value per feature
-#' @param mat     All data which consists of a vector of values per feature
-#' @param lst     All data than can only be expressed as a nested list per
-#'                feature
+#' @param barcode          Either the barcode of the plate or a WellLocation
+#'                         object corresponding to the image's well
+#' @param index            Either the linearized index of the image within the
+#'                         whole plate or the image index within the well
+#' @param n.img            Number of images per well (either 6 or 9)
+#' @param counts.quantiles The 0.05 and 0.95 quantiles of cell counts for the
+#'                         whole plate.
+#' @param counts.cells     The number of cells in this image.
+#' @param vec              All data than contains only a single value per
+#'                         feature
+#' @param mat              All data which consists of a vector of values per
+#'                         feature
+#' @param lst              All data than can only be expressed as a nested list
+#'                         per feature
 #'
 #' @return An ImageData object: a list with slots for plate barcode, well
 #'         location within the plate (index and row/col), image location within
@@ -555,8 +582,12 @@ WellData <- function(well, data=NULL) {
 #' data <- ImageData(WellLocation("J107-2C", "D", 15), 5)
 #' 
 #' @export
-ImageData <- function(barcode, index, n.img=NULL, vec=NULL, mat=NULL,
-                      lst=NULL) {
+ImageData <- function(barcode, index, n.img=NULL, counts.quantiles=NULL,
+                      counts.cells=NA, vec=NULL, mat=NULL, lst=NULL) {
+  if(is.null(counts.quantiles)) {
+    counts.quantiles <- c(NA, NA)
+    names(counts.quantiles) <- c("5%", "95%")
+  }
   if(is.null(vec) & is.null(mat) & is.null(lst)) {
     if(!is.null(n.img)) warning("ignoring parameter n.img")
     if(!any(class(barcode) == "WellLocation")) {
@@ -568,17 +599,19 @@ ImageData <- function(barcode, index, n.img=NULL, vec=NULL, mat=NULL,
     return(data.img)
   } else {
     ind <- getWellIndex2D(index, n.img)
-    result <- list(plate       = barcode,
-                   well.index  = index,
-                   well.row    = ind$wel.row,
-                   well.col    = ind$wel.col,
-                   image.index = ind$img.ind,
-                   image.row   = ind$img.row,
-                   image.col   = ind$img.col,
-                   image.total = n.img,
-                   data.vec    = vec,
-                   data.mat    = mat,
-                   data.lst    = lst)
+    result <- list(plate            = barcode,
+                   well.index       = index,
+                   well.row         = ind$wel.row,
+                   well.col         = ind$wel.col,
+                   image.index      = ind$img.ind,
+                   image.row        = ind$img.row,
+                   image.col        = ind$img.col,
+                   image.total      = n.img,
+                   counts.quantiles = counts.quantiles,
+                   counts.cells     = counts.cells,
+                   data.vec         = vec,
+                   data.mat         = mat,
+                   data.lst         = lst)
     return(structure(result, class = c("ImageData", "Data")))
   }
 }

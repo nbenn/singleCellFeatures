@@ -4,24 +4,31 @@
 \alias{ImageData}
 \title{Constructor for ImageData objects}
 \usage{
-ImageData(barcode, index, n.img = NULL, vec = NULL, mat = NULL,
-  lst = NULL)
+ImageData(barcode, index, n.img = NULL, counts.quantiles = NULL,
+  counts.cells = NA, vec = NULL, mat = NULL, lst = NULL)
 }
 \arguments{
-\item{barcode}{Either the barcode of the plate or a WellLocation object
-corresponding to the image's well}
+\item{barcode}{Either the barcode of the plate or a WellLocation
+object corresponding to the image's well}
 
-\item{index}{Either the linearized index of the image within the whole
-plate or the image index within the well}
+\item{index}{Either the linearized index of the image within the
+whole plate or the image index within the well}
 
 \item{n.img}{Number of images per well (either 6 or 9)}
 
-\item{vec}{All data than contains only a single value per feature}
+\item{counts.quantiles}{The 0.05 and 0.95 quantiles of cell counts for the
+whole plate.}
 
-\item{mat}{All data which consists of a vector of values per feature}
+\item{counts.cells}{The number of cells in this image.}
 
-\item{lst}{All data than can only be expressed as a nested list per
-               feature}
+\item{vec}{All data than contains only a single value per
+feature}
+
+\item{mat}{All data which consists of a vector of values per
+feature}
+
+\item{lst}{All data than can only be expressed as a nested list
+                        per feature}
 }
 \value{
 An ImageData object: a list with slots for plate barcode, well

@@ -1,7 +1,6 @@
 #' Covert compatible objects to WellLocation
 #'
-#' Build WellLocation object from other objects, such as WellData or
-#' WellMetadata
+#' Build WellLocation object from other objects, such as WellData.
 #'
 #' @param The object to be used as basis for new WellLocation object
 #' 
@@ -19,8 +18,8 @@ convertToWellLocation <- function(x) {
 #' @export
 convertToWellLocation.WellData <- function(x) {
   barcode <- getBarcode(x)
-  row <- x$meta$row
-  col <- x$meta$col
+  row <- x$meta$well.row
+  col <- x$meta$well.col
   return(WellLocation(barcode, row, col))
 }
 

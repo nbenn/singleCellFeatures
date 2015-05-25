@@ -13,8 +13,7 @@ convertToWellLocation(x)
 The new WellLocation object
 }
 \description{
-Build WellLocation object from other objects, such as WellData or
-WellMetadata
+Build WellLocation object from other objects, such as WellData.
 }
 \examples{
 plate <- PlateLocation("J101-2C")

@@ -4,10 +4,13 @@
 \alias{PlateMetadata}
 \title{Constructor for PlateMetadata objects}
 \usage{
-PlateMetadata(plate)
+PlateMetadata(plate, quantiles = NULL)
 }
 \arguments{
-\item{well}{A PlateLocation object}
+\item{plate}{A PlateLocation object}
+
+\item{quantiles}{A list containing the upper and lower 5% quantiles of cell
+                  counts.}
 }
 \value{
 A PlateMetadata object: a list with slots describing conditions on
