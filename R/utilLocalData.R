@@ -68,6 +68,7 @@ deleteAllWellCaches <- function() {
     cacheDir   <- dirname(getCacheFilenameData(WellLocation(plate, "A", 1)))
     cacheFiles <- list.files(path=cacheDir, pattern="\\.rds", full.names=TRUE)
     if(length(cacheFiles) > 0) {
+      message("deleting caches for plate ", getBarcode(plate))
       unlink(cacheFiles)
       if(length(list.files(path=cacheDir, pattern=".*")) == 0) {
         unlink(cacheDir, recursive=TRUE)

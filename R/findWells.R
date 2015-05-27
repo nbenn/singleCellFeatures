@@ -38,7 +38,7 @@
 findWells <- function(pathogens=NULL, experiments=NULL, plates=NULL,
                       well.rows=NULL, well.cols=NULL, well.names=NULL,
                       well.types=NULL, contents=NULL, id.openBIS=NULL,
-                      id.manufacturer=NULL, name=NULL, verbose=TRUE) {
+                      id.manufacturer=NULL, name=NULL, verbose=FALSE) {
   data(plateDatabase, envir=environment())
   curr.plates <- plate.database
   if(verbose) message("starting with ", nrow(curr.plates), " plates.")
@@ -249,21 +249,19 @@ findWells <- function(pathogens=NULL, experiments=NULL, plates=NULL,
   }
   well.db <- well.db[keep,]
 
-  if(verbose) {
-    message("there are ", nrow(well.db), " wells remaining:")
-    out <- cbind(
-      stri_pad_right(well.db$barcode, max(nchar(well.db$barcode))),
-      stri_pad_right(paste0(well.db$well.row, well.db$well.col), 3),
-      stri_pad_right(well.db$well.type, max(nchar(well.db$well.type))),
-      stri_pad_right(well.db$id.openBIS, max(nchar(well.db$id.openBIS))),
-      stri_pad_right(well.db$id.manufacturer,
-                     max(nchar(well.db$id.manufacturer))),
-      stri_pad_right(well.db$name, max(nchar(well.db$name)))
-    )
-    apply(out, 1, function(row) {
-      message("  ", paste(row, collapse="  "))
-    })
-  }
+  message("there are ", nrow(well.db), " wells remaining:")
+  out <- cbind(
+    stri_pad_right(well.db$barcode, max(nchar(well.db$barcode))),
+    stri_pad_right(paste0(well.db$well.row, well.db$well.col), 3),
+    stri_pad_right(well.db$well.type, max(nchar(well.db$well.type))),
+    stri_pad_right(well.db$id.openBIS, max(nchar(well.db$id.openBIS))),
+    stri_pad_right(well.db$id.manufacturer,
+                   max(nchar(well.db$id.manufacturer))),
+    stri_pad_right(well.db$name, max(nchar(well.db$name)))
+  )
+  apply(out, 1, function(row) {
+    message("  ", paste(row, collapse="  "))
+  })
 
   if(nrow(well.db) == 0) stop("no matching wells found.")
   res.lst <- apply(well.db, 1, function(row) {

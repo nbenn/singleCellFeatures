@@ -31,9 +31,9 @@ cleanData.WellData <- function(x) {
     else return(FALSE)
   })
   if(sum(!discard) > 0) {
-    message("well ", stri_pad_right(getWellName(x), 3), ": discarding ",
-            sum(!discard), " images because count.cells not in [", quant1, ", ",
-            quant2, "]")
+    message("well ", stri_pad_right(getWellName(x), 3), " (", getBarcode(x),
+            "): discarding ", sum(!discard), " images because count.cells not ",
+            "in [", quant1, ", ", quant2, "]")
     x$data <- x$data[discard]
   }
   return(x)

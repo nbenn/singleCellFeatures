@@ -290,7 +290,7 @@ PlateData <- function(plate, select=NULL, drop=NULL, data=NULL) {
     return(list(indices=indices, length=length))
   }, feature.length, names(data$data))
   # get a name for each group by finding the most frequent object
-  names(groups) <- lapply(groups, function(group, feat.lengths, feat.names) {
+  group.names <- sapply(groups, function(group, feat.lengths, feat.names) {
     all.names <- feat.names[feat.lengths == group$length]
     all.names <- sapply(all.names, function(name) {
       res <- unlist(strsplit(name, "[.]"))
@@ -300,6 +300,15 @@ PlateData <- function(plate, select=NULL, drop=NULL, data=NULL) {
     counts <- table(all.names)
     return(names(counts)[which.max(counts)])
   }, feature.length, names(data$data))
+  # prevent duplicates
+  group.names <- sapply(1:length(group.names), function(i, names) {
+    if(length(group.names[group.names == group.names[i]]) > 1) {
+      return(paste0(names[i], i))
+    } else {
+      return(names[i])
+    }
+  }, group.names)
+  names(groups) <- group.names
   # reorder groups into lists corresponding to how the WellData objects will be
   # constructed
   # the vec group consists of data that has a single value per image, those

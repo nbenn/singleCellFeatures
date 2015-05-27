@@ -7,7 +7,7 @@
 findWells(pathogens = NULL, experiments = NULL, plates = NULL,
   well.rows = NULL, well.cols = NULL, well.names = NULL,
   well.types = NULL, contents = NULL, id.openBIS = NULL,
-  id.manufacturer = NULL, name = NULL, verbose = TRUE)
+  id.manufacturer = NULL, name = NULL, verbose = FALSE)
 }
 \arguments{
 \item{pathogens}{Narrow down the results by selecting pathogens (exact,

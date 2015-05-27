@@ -62,20 +62,16 @@ getSingleCellData <- function(locations, select.features=NULL,
     barcodes <- unique(unlist(lapply(locations, getBarcode)))
     # reorder the list s.t. top level is plates and below that requests per
     # plate
-    plates <- lapply(
-      barcodes,
-      function(barc, locs) {
-        res <- lapply(
-          locs,
-          function(loc, bc) {
-            if(getBarcode(loc) == bc) return(loc)
-          },
-          barc
-        )
-        return(res[!sapply(res, is.null)])
-      },
-      locations
-    )
+    plates <- lapply(barcodes, function(barc, locs) {
+      res <- lapply(
+        locs,
+        function(loc, bc) {
+          if(getBarcode(loc) == bc) return(loc)
+        },
+        barc
+      )
+      return(res[!sapply(res, is.null)])
+    }, locations)
     names(plates) <- barcodes
     # process request per plate
     result <- lapply(plates, processSingleCellDataPlate, select.features,
@@ -181,11 +177,9 @@ processSingleCellDataPlate <- function(locations, select=NULL, drop=NULL,
         data <- PlateData(current.plate, select, drop)
       } else stop("can only deal with PlateLocation/WellLocation objects")
     } else {
-      if(all(sapply(locations,
-        function(location) {
-          return(any(class(location) == "PlateLocation"))
-        }
-      ))) {
+      if(all(sapply(locations, function(location) {
+        return(any(class(location) == "PlateLocation"))
+      }))) {
         # all list items are plates, therefore no well caches will be written
         data <- PlateData(current.plate, select, drop)
       } else {
@@ -193,21 +187,17 @@ processSingleCellDataPlate <- function(locations, select=NULL, drop=NULL,
         data <- PlateData(current.plate)
         case <- 3
       }
-      data <- lapply(
-        locations,
-        function(location, data) {
-          if(any(class(location) == "PlateLocation")) return(data)
-          else if (any(class(location) == "WellLocation")) {
-            well.data <- extractWells(data, location, FALSE)
-            return(well.data)
-          } else stop("can only deal with PlateLocation/WellLocation objects")
-        },
-        data
-      )
-      lst.names <- sapply(locations, function(loc) {
+      data <- lapply(locations, function(location, data) {
+        if(any(class(location) == "PlateLocation")) return(data)
+        else if (any(class(location) == "WellLocation")) {
+          well.data <- extractWells(data, location, FALSE)
+          return(well.data)
+        } else stop("can only deal with PlateLocation/WellLocation objects")
+      }, data)
+      lst.names <- sapply(locations, function(location) {
         if(any(class(location) == "PlateLocation")) return(getBarcode(loc))
         else if (any(class(location) == "WellLocation")) {
-          return(getWellName(loc))
+          return(getWellName(location))
         } else stop("can only deal with PlateLocation/WellLocation objects")
       })
       names(data) <- lst.names
