@@ -6,8 +6,8 @@
 \usage{
 findWells(pathogens = NULL, experiments = NULL, plates = NULL,
   well.rows = NULL, well.cols = NULL, well.names = NULL,
-  well.types = NULL, contents = NULL, id.openBIS = NULL,
-  id.manufacturer = NULL, name = NULL, verbose = FALSE)
+  well.types = NULL, contents = NULL, id.openBIS = NULL, id.infx = NULL,
+  name = NULL, verbose = FALSE)
 }
 \arguments{
 \item{pathogens}{Narrow down the results by selecting pathogens (exact,
@@ -31,15 +31,15 @@ the well.types column in well databases.}
 
 \item{contents}{This vector of strings/integers is matched against the
 three well database columns id.openBIS,
-id.manufacturer and name via case insensitive regular
+id.infx and name via case insensitive regular
 expressions. In case it is specified, the next three
 parameters are ignored.}
 
 \item{id.openBIS}{A vector of regular expressions that is matched
 against the id.openBIS column.}
 
-\item{id.manufacturer}{A vector of regular expressions that is matched
-against the id.manufacturer column.}
+\item{id.infx}{A vector of regular expressions that is matched
+against the id.infx column.}
 
 \item{name}{A vector of regular expressions that is matched
                        against the name column.}

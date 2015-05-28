@@ -141,10 +141,10 @@ updateDatabaseWells <- function(pathogens=NULL) {
     pathogen.all <- read.delim(path, stringsAsFactors=FALSE)
     # reduce the dataset a handful of cols (keep filesize/loading times down)
     pathogen.red <- pathogen.all[c("Barcode", "WellRow", "WellColumn",
-                                   "WellType", "ID_openBIS", "ID_manufacturer",
+                                   "WellType", "ID_openBIS", "ID",
                                    "Name")]
     colnames(pathogen.red) <- c("barcode", "well.row", "well.col", "well.type",
-                                "id.openBIS", "id.manufacturer",  "name")
+                                "id.openBIS", "id.infx",  "name")
     # get the name of the current pathogen: "PATHOGEN_TEAM"
     pathogen.name <- unique(pathogen.all$Group)
     if(length(pathogen.name) != 1) stop("different group names within pathogen")

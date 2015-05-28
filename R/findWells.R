@@ -16,13 +16,13 @@
 #'                        the well.types column in well databases.
 #' @param contents        This vector of strings/integers is matched against the
 #'                        three well database columns id.openBIS,
-#'                        id.manufacturer and name via case insensitive regular
+#'                        id.infx and name via case insensitive regular
 #'                        expressions. In case it is specified, the next three
 #'                        parameters are ignored.
 #' @param id.openBIS      A vector of regular expressions that is matched
 #'                        against the id.openBIS column.
-#' @param id.manufacturer A vector of regular expressions that is matched
-#'                        against the id.manufacturer column.
+#' @param id.infx         A vector of regular expressions that is matched
+#'                        against the id.infx column.
 #' @param name            A vector of regular expressions that is matched
 #'                        against the name column.
 #'
@@ -38,7 +38,7 @@
 findWells <- function(pathogens=NULL, experiments=NULL, plates=NULL,
                       well.rows=NULL, well.cols=NULL, well.names=NULL,
                       well.types=NULL, contents=NULL, id.openBIS=NULL,
-                      id.manufacturer=NULL, name=NULL, verbose=FALSE) {
+                      id.infx=NULL, name=NULL, verbose=FALSE) {
   data(plateDatabase, envir=environment())
   curr.plates <- plate.database
   if(verbose) message("starting with ", nrow(curr.plates), " plates.")
@@ -181,13 +181,13 @@ findWells <- function(pathogens=NULL, experiments=NULL, plates=NULL,
     if(!(is.character(contents) | is.integer(contents))) {
       stop("expecting a vector of characters or integers for contents")
     }
-    if(!(is.null(id.openBIS) | is.null(id.manufacturer) | is.null(name))) {
-      warning("when using contents, id.openBIS, id.manufacturer and name are ",
+    if(!(is.null(id.openBIS) | is.null(id.infx) | is.null(name))) {
+      warning("when using contents, id.openBIS, id.infx and name are ",
               "ignored.")
     }
     found <- unlist(sapply(contents, function(content) {
       found1 <- grep(content, well.db$id.openBIS, ignore.case=TRUE)
-      found2 <- grep(content, well.db$id.manufacturer, ignore.case=TRUE)
+      found2 <- grep(content, well.db$id.infx, ignore.case=TRUE)
       found3 <- grep(content, well.db$name, ignore.case=TRUE)
       return(unique(c(found1, found2, found3)))
     }))
@@ -211,17 +211,17 @@ findWells <- function(pathogens=NULL, experiments=NULL, plates=NULL,
                 "remaining.")
       }
     }
-    # if id.manufacturer specified, exclude others
-    if(!is.null(id.manufacturer)) {
-      if(!(is.character(id.manufacturer) | is.integer(id.manufacturer))) {
-        stop("expecting a vector of characters or integers for id.manufacturer")
+    # if id.infx specified, exclude others
+    if(!is.null(id.infx)) {
+      if(!(is.character(id.infx) | is.integer(id.infx))) {
+        stop("expecting a vector of characters or integers for id.infx")
       }
-      found <- unlist(sapply(id.manufacturer, function(x) {
-        return(grep(x, well.db$id.manufacturer, ignore.case=TRUE))
+      found <- unlist(sapply(id.infx, function(x) {
+        return(grep(x, well.db$id.infx, ignore.case=TRUE))
       }))
       well.db <- well.db[unique(found),]
       if(verbose) {
-        message("after applying id.manufacturer, ", nrow(well.db), " wells ",
+        message("after applying id.infx, ", nrow(well.db), " wells ",
                 "remaining.")
       }
     }
@@ -255,8 +255,8 @@ findWells <- function(pathogens=NULL, experiments=NULL, plates=NULL,
     stri_pad_right(paste0(well.db$well.row, well.db$well.col), 3),
     stri_pad_right(well.db$well.type, max(nchar(well.db$well.type))),
     stri_pad_right(well.db$id.openBIS, max(nchar(well.db$id.openBIS))),
-    stri_pad_right(well.db$id.manufacturer,
-                   max(nchar(well.db$id.manufacturer))),
+    stri_pad_right(well.db$id.infx,
+                   max(nchar(well.db$id.infx))),
     stri_pad_right(well.db$name, max(nchar(well.db$name)))
   )
   apply(out, 1, function(row) {
