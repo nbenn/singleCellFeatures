@@ -80,7 +80,7 @@ WellMetadata <- function(well) {
       well.type           = aggregate$WellType,
       well.quality        = aggregate$WELL_QUALITY_STATUS,
       gene.name           = aggregate$Name,
-      gene.id             = aggregate$ID_manufacturer,
+      gene.id             = aggregate$ID,
       sirna.name          = aggregate$ID_openBIS,
       sirna.sequence      = aggregate$Sequence_antisense_5_3,
       sirna.seed          = aggregate$Seed_sequence_antisense_5_3,
