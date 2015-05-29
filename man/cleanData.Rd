@@ -4,10 +4,13 @@
 \alias{cleanData}
 \title{Remove some bad image data}
 \usage{
-cleanData(x)
+cleanData(x, ...)
 }
 \arguments{
 \item{x}{The PlateData/WellData object of interest.}
+
+\item{quants}{A string for choosing betwenn only applying lower, upper,
+              both one none of the quantiles for cleaning up the data.}
 }
 \value{
 A cleaned up version of the input object.

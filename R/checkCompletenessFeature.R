@@ -20,7 +20,8 @@ checkCompletenessFeature <- function(x) {
 #' @export
 checkCompletenessFeature.Data <- function(x) {
   ignored.feats <- c("Bacteria.SubObjectFlag", "Batch_handles",
-                     "Image.ModuleError_43CreateBatchFiles")
+                     "Image.ModuleError_43CreateBatchFiles",
+                     "Image.ModuleError_40CreateBatchFiles")
   plate <- convertToPlateLocation(x)
   # check for completenes of single cell data
   pathogen <- getPathogen(plate)
