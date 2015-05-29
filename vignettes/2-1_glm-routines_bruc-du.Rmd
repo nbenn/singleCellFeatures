@@ -1,0 +1,235 @@
+---
+title: "2.1 Compare glm routines (Brucella, DU, MTOR/Scrambled)"
+author: "Nicolas Bennett"
+date: "`r Sys.Date()`"
+output: rmarkdown::pdf_document
+vignette: >
+  %\VignetteIndexEntry{2.1 Compare glm routines (Brucella, DU, MTOR/Scrambled)}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r, setup, echo=FALSE}
+suppressPackageStartupMessages(library(knitr))
+suppressPackageStartupMessages(library(singleCellFeatures))
+options(scipen=1, digits=2, singleCellFeatures.progressBars="none")
+opts_chunk$set(fig.height=10, fig.width=14)
+```
+
+The following investigation marks the starting point to fitting glm models to single cell feature data. The regular glm routine has convergence problems with the investigated data set and as the data can be completely separated, the resulting p-values are unusable.
+
+```{r, functions, echo=FALSE}
+glmRegular <- function(data) {
+  model <- glm("Response ~ .", binomial, data$train)
+  predi <- as.factor(round(predict(model, newdata=data$test, type="response")))
+  levels(predi) <- c("active", "control")
+  return(compareModeltoTruth(predi, data$test$Response))
+}
+
+glmGlm2 <- function(data) {
+  suppressPackageStartupMessages(library(glm2))
+  suppressMessages(data <- makeRankFull(data))
+  model <- glm2("Response ~ .", binomial, data$train)
+  predi <- as.factor(round(predict(model, newdata=data$test, type="response")))
+  levels(predi) <- c("active", "control")
+  return(compareModeltoTruth(predi, data$test$Response))
+}
+
+glmSafe <- function(data) {
+  suppressPackageStartupMessages(library(safeBinaryRegression))
+  suppressMessages(data <- makeRankFull(data))
+  tryCatch({
+    model <- glm("Response ~ .", binomial, data$train)
+    predi <- as.factor(round(predict(model, newdata=data$test,
+                                     type="response")))
+    levels(predi) <- c("active", "control")
+    return(compareModeltoTruth(predi, data$test$Response))
+  }, error = function(err) {
+    message("err: complete separation")
+  }, finally = {
+      detach("package:safeBinaryRegression", unload=TRUE)
+  })
+}
+
+glmBrglm <- function(data) {
+  suppressPackageStartupMessages(library(brglm))
+  suppressMessages(data <- makeRankFull(data))
+  model <- brglm("Response ~ .", data=data$train)
+  predi <- as.factor(round(predict(model, newdata=data$test, type="response")))
+  levels(predi) <- c("active", "control")
+  return(compareModeltoTruth(predi, data$test$Response))
+}
+
+glmGlmnet <- function(data) {
+  suppressPackageStartupMessages(library(glmnet))
+  x <- as.matrix(subset(data$train, select=-c(Response)))
+  y <- data$train$Response
+  model <- glmnet(x, y, family="binomial")
+  x.test <- as.matrix(subset(data$test, select=-c(Response)))
+  predi <- predict(model, newx=x.test, type="class")
+  return(compareModeltoTruth(as.factor(predi[,ncol(predi)]), 
+                             data$test$Response))
+}
+
+glmBayesglm <- function(data) {
+  suppressPackageStartupMessages(library(arm))
+  model <- bayesglm("Response ~ .", binomial, data$train)
+  predi <- as.factor(round(predict(model, newdata=data$test, type="response")))
+  levels(predi) <- c("active", "control")
+  return(compareModeltoTruth(predi, data$test$Response))
+}
+
+glmBestglm <- function(data) {
+  suppressPackageStartupMessages(library(bestglm))
+  suppressMessages(data <- makeRankFull(data))
+  tryCatch({
+    X <- as.matrix(subset(data$train, select=-c(Response)))
+    y <- as.numeric(data$train$Response) - 1
+    Xy <- as.data.frame(cbind(X,y))
+    names(Xy) <- c(paste("X", 1:ncol(X) ,sep=""), "y")
+    model <- bestglm(Xy, family=binomial)
+    predi <- as.factor(round(predict(model, newdata=data$test,
+      type="response")))
+    levels(predi) <- c("active", "control")
+    return(compareModeltoTruth(predi, data$test$Response))
+  }, error = function(err) {
+      message("err: too many subsets")
+  })
+}
+
+```
+
+Several glm routines, in addition the the standard glm function provided by base R, are tested for their ability to imporve the analysis of the problematic dataset.
+
+* The *glm2* package employs a different fitting method which should provide greater stability for models that fail to converge using glm.
+* The glm routine in *safeBinaryRegression* extends the default glm function by first testing for the existence of a maximal likelihood estimate.
+* For dealing with the complete separation issues, *brglm* does either an adjusted-score approach to bias reduction or maximum penalized likelihood (by Jeffreys invariant prior). The returned estimates are guaranteed to be finite.
+* A lasso or elastic-net regularized solution is fitted by *glmnet*
+* while *bayesglm* uses a weakly informative prior as a constraint.
+* Finally, *bestglm* does a best subset search using AIC, BIC, EBIC, BICq or Cross-Validation.
+
+
+```{r, loadData}
+mtor.loc <- findWells(experiments="brucella-du-k[12]", contents="MTOR")
+scr1.loc <- findWells(plates=sapply(mtor.loc, getBarcode), contents="SCRAMBLED",
+                      well.names="G23")
+scr2.loc <- findWells(plates=sapply(mtor.loc, getBarcode), contents="SCRAMBLED",
+                      well.names="H2")
+data <- suppressMessages(getSingleCellData(c(mtor.loc, scr1.loc, scr2.loc)))
+
+mtor.dat <- lapply(data, function(x) {
+  return(list(meta=x$H6$meta, data=meltData(cleanData(x$H6))))
+})
+scr1.dat <- lapply(data, function(x) {
+  return(list(meta=x$G23$meta, data=meltData(cleanData(x$G23))))
+})
+scr2.dat <- lapply(data, function(x) {
+  return(list(meta=x$H2$meta, data=meltData(cleanData(x$H2))))
+})
+```
+
+First, wells containing siRNA for the gene *MTOR* are searched for within the kinome-wide Dharmacon unpooled screens (replicates 1 and 2). Then on the plates containing those wells, scrambled control experiments are looked up (one set in a well located close to the *MTOR* well and one set located further away). The data for the resulting 24 wells is loaded, cleaned up and melted into data frames. A quick check in openBIS reveals that the two images discarded in well H2 on `J101-2C` are completely out of focus.
+
+```{r, glm1, cache=TRUE, collapse=TRUE}
+dat1 <- suppressMessages(prepareDataforGlm(
+  mtor.dat[["J101-2C"]]$data$mat$Cells, scr1.dat[["J101-2C"]]$data$mat$Cells)
+)
+system.time(glm11 <- glmRegular(dat1))
+system.time(glm12 <- glmGlm2(dat1))
+system.time(glm13 <- glmSafe(dat1))
+system.time(glm14 <- glmBrglm(dat1))
+system.time(glm15 <- glmGlmnet(dat1))
+system.time(glm16 <- glmBayesglm(dat1))
+system.time(glm17 <- glmBestglm(dat1))
+```
+
+As mentioned earlier, the standard glm routine has both convergence issues and trouble with complete data separation. The modified fitting procedure in *glm2* does not improve the situation however. The extension provided in *safeBinaryRegression* correctly identifies the problem of complete separation but then fails and therefore is of no use. *brglm* also has problems with fitting a solution, exceedes the default numbe rof iterations, runs for a very long time and yields worse prediction accuracy (`r glm14$ACC`) than the first two packages (`r glm11$ACC` and `r glm12$ACC`, respectivley). A regularized solution fitted by *glmnet* is found without issues while *bayesglm* again complains about complete separation. Finally, *bestglm* is completely useless, as it tries to choose the best result via an all subsets search ($2^n$), which is prohibititive if $n \approx 500$.
+
+```{r, glm2, cache=TRUE, collapse=TRUE}
+dat2 <- suppressMessages(prepareDataforGlm(
+  mtor.dat[["J101-2C"]]$data$mat$Cells, scr2.dat[["J101-2C"]]$data$mat$Cells)
+)
+glm21 <- glmRegular(dat2)
+glm22 <- glmGlm2(dat2)
+glm25 <- glmGlmnet(dat2)
+glm26 <- glmBayesglm(dat2)
+```
+
+Of the remaining glm routines, *glm* and *glm2* again suffer from convergence issues and complete data separation, while *glmnet* does fine and *bayesglm* only warns about complete separation. The prediction results are very good which of course is not at all surprising, given the separation issues.
+
+method, data    | true positive rate | true negative rate | accuracy
+----------------|--------------------|--------------------|--------------
+glm, data1      | `r glm11$TPR`      | `r glm11$TNR`      | `r glm11$ACC`
+glm, data2      | `r glm21$TPR`      | `r glm21$TNR`      | `r glm21$ACC`
+glm2, data1     | `r glm12$TPR`      | `r glm12$TNR`      | `r glm12$ACC`
+glm2, data2     | `r glm22$TPR`      | `r glm22$TNR`      | `r glm22$ACC`
+glment, data1   | `r glm15$TPR`      | `r glm15$TNR`      | `r glm15$ACC`
+glmnet, data2   | `r glm25$TPR`      | `r glm25$TNR`      | `r glm25$ACC`
+bayesglm, data1 | `r glm16$TPR`      | `r glm16$TNR`      | `r glm16$ACC`
+bayesglm, data2 | `r glm26$TPR`      | `r glm26$TNR`      | `r glm26$ACC`
+
+All data is from plate `J101-2C` and data1 refers to the *MTOR* well, combined with the scrambled control well `G23` while data2 corresponds to the same *MTOR* well paired with the much closer scrambled control well `H2`.
+
+```{r, glm3, cache=TRUE, collapse=TRUE}
+dat3 <- suppressMessages(prepareDataforGlm(
+  mtor.dat[["J107-2C"]]$data$mat$Cells, scr2.dat[["J107-2C"]]$data$mat$Cells)
+)
+glm31 <- glmRegular(dat3)
+glm32 <- glmGlm2(dat3)
+glm35 <- glmGlmnet(dat3)
+glm36 <- glmBayesglm(dat3)
+```
+
+For this run, data from a differen plate is used (`J107-2C`) and the well pair lying closer on the plate (`H6` for *MTOR* and `H2` for *SCRAMBLED*) is fitted. The issue of complete separation remains and therefore prediction again is very good:
+
+method   | true positive rate | true negative rate | accuracy
+---------|--------------------|--------------------|--------------
+glm      | `r glm31$TPR`      | `r glm31$TNR`      | `r glm31$ACC`
+glm2     | `r glm32$TPR`      | `r glm32$TNR`      | `r glm32$ACC`
+glment   | `r glm35$TPR`      | `r glm35$TNR`      | `r glm35$ACC`
+bayesglm | `r glm36$TPR`      | `r glm36$TNR`      | `r glm36$ACC`
+
+
+```{r, glm4, cache=TRUE, collapse=TRUE}
+dat4 <- suppressMessages(prepareDataforGlm(
+  rbind(mtor.dat[["J101-2C"]]$data$mat$Cells,
+        mtor.dat[["J104-2C"]]$data$mat$Cells),
+  rbind(scr2.dat[["J101-2C"]]$data$mat$Cells,
+        scr2.dat[["J104-2C"]]$data$mat$Cells))
+)
+glm41 <- glmRegular(dat4)
+glm42 <- glmGlm2(dat4)
+glm45 <- glmGlmnet(dat4)
+glm46 <- glmBayesglm(dat4)
+```
+
+Up until now, one single *MTOR* well was compared to a single *SCRAMBLED* well. Now, two wells for each setting are combined: The two `H6` wells on plates `J101-2C` and `J104-2C` are combined and fitted against the two `H2` wells on the same plates. The previous issues remain and prediction accuracy is still high.
+
+method   | true positive rate | true negative rate | accuracy
+---------|--------------------|--------------------|--------------
+glm      | `r glm41$TPR`      | `r glm41$TNR`      | `r glm41$ACC`
+glm2     | `r glm42$TPR`      | `r glm42$TNR`      | `r glm42$ACC`
+glment   | `r glm45$TPR`      | `r glm45$TNR`      | `r glm45$ACC`
+bayesglm | `r glm46$TPR`      | `r glm46$TNR`      | `r glm46$ACC`
+
+
+```{r, glm5, cache=TRUE, collapse=TRUE}
+dat5 <- suppressMessages(prepareDataforGlm(
+  do.call(rbind, lapply(mtor.dat, function(x) return(x$data$mat$Cells))),
+  do.call(rbind, lapply(scr2.dat, function(x) return(x$data$mat$Cells))))
+)
+system.time(glm51 <- glmRegular(dat5))
+system.time(glm52 <- glmGlm2(dat5))
+system.time(glm55 <- glmGlmnet(dat5))
+system.time(glm56 <- glmBayesglm(dat5))
+```
+
+Finally, all available data is combined (8 *MTOR* wells against 8 *SCRAMBLED* wells, `H2`). Prediction accuracy is lowerde considerably but is still very high considering the circumstances.
+
+method   | true positive rate | true negative rate | accuracy
+---------|--------------------|--------------------|--------------
+glm      | `r glm51$TPR`      | `r glm51$TNR`      | `r glm51$ACC`
+glm2     | `r glm52$TPR`      | `r glm52$TNR`      | `r glm52$ACC`
+glment   | `r glm55$TPR`      | `r glm55$TNR`      | `r glm55$ACC`
+bayesglm | `r glm56$TPR`      | `r glm56$TNR`      | `r glm56$ACC`
+

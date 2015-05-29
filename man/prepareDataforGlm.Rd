@@ -36,7 +36,7 @@ scra.dat <- meltData(cleanData(data[[1]]$G23))
 # prepare data for glm
 data <- prepareDataforGlm(mtor.dat$mat$Cells, scra.dat$mat$Cells)
 data <- makeRankFull(data)
-# run glm (enforcing full rank might be advisbale)
+# run glm
 model <- glm("Response ~ .", binomial, data$train)
 }
 

@@ -25,7 +25,7 @@
 #' # prepare data for glm
 #' data <- prepareDataforGlm(mtor.dat$mat$Cells, scra.dat$mat$Cells)
 #' data <- makeRankFull(data)
-#' # run glm (enforcing full rank might be advisbale)
+#' # run glm
 #' model <- glm("Response ~ .", binomial, data$train)
 #' 
 #' @export
@@ -131,7 +131,7 @@ makeRankFull <- function(data) {
     new.rank <- qr(temp)$rank
     if(new.rank < ncol(temp)) {
       # still rank deficient
-      stop("\nrank: ", new.rank, " full: ", ncol(temp), "\n")
+      stop("rank: ", new.rank, " full: ", ncol(temp))
     }
   }
   if(length(remove) > 0) {
@@ -139,4 +139,70 @@ makeRankFull <- function(data) {
     data$test  <- data$test[, !names(data$test) %in% remove]
   }
   return(data)
+}
+
+#' Compare result of binary classification to truth
+#'
+#' Given two vectors of factors (two identical levels) of equal length,
+#' calculate confusion matrix marginals
+#'
+#' @param estim Vector holding a two level factor with the classification
+#'              result.
+#' @param truth Vector holding a two level factor with the truth.
+#'
+#' @return A list with various key charactereistics of the resulting confusion
+#'         matrix
+#'
+#' @examples
+#' # get gene locations
+#' mtor.loc <- findWells(experiments="brucella-du-k1", contents="MTOR")
+#' scra.loc <- findWells(plates=sapply(mtor.loc, getBarcode),
+#'                       contents="SCRAMBLED", well.names="G23")
+#' # combine for faster fetching
+#' data     <- getSingleCellData(list(mtor.loc[[1]], scra.loc[[1]]))
+#' mtor.dat <- meltData(cleanData(data[[1]]$H6))
+#' scra.dat <- meltData(cleanData(data[[1]]$G23))
+#' # prepare data for glm
+#' data <- prepareDataforGlm(mtor.dat$mat$Cells, scra.dat$mat$Cells)
+#' data <- makeRankFull(data)
+#' # run glm
+#' model <- glm("Response ~ .", binomial, data$train)
+#' # compare to testing data
+#' predi <- as.factor(round(predict(model, newdata=data$test, type="response")))
+#' levels(predi) <- c("active", "control")
+#' comparison <- compareModeltoTruth(predi, data$test$Response)
+#'
+#' @export
+
+compareModeltoTruth <- function(estim, truth) {
+  if(length(estim) != length(truth)) {
+    stop("comparing vectors of unequal length")
+  }
+  if(!identical(levels(truth), levels(estim))) {
+    stop("levels don't match")
+  }
+  po <- levels(estim)[1]
+  ne <- levels(estim)[2]
+  tp <- sum(estim == po & truth == po)
+  tn <- sum(estim == ne & truth == ne)
+  fp <- sum(estim == po & truth == ne)
+  fn <- sum(estim == ne & truth == po)
+  tpr <- tp / (tp + fn)
+  tnr <- tn / (fp + tn)
+  fpr <- fp / (fp + tn)
+  fnr <- fn / (fn + tp)
+  ppv <- tp / (tp + fp)
+  npv <- tn / (tn + fn)
+  fdr <- fp / (fp + tp)
+  fur <- fn / (fn + tn)
+  f1s <- 2 * tp / (2 * tp + fp + fn)
+  acc <- (tp + tn) / (tp + tn + fp + fn)
+  n <- tn + tp + fn + fp
+  s <- (tp + fn) / n
+  p <- (tp + fp) / n
+  mcc <- (tp / n - s * p) / sqrt(p * s * (1 - s) * (1 - p))
+  return(list(POS=po, NEG=ne, TP=tp, TN=tn, FP=fp, FN=fn, TPR=tpr, TNR=tnr,
+              FPR=fpr, FNR=fnr, PPV=ppv, NPV=npv, FDR=fdr, FOR=fur, F1S=f1s,
+              ACC=acc, MCC=mcc)
+  )
 }
