@@ -153,6 +153,7 @@ meltData.ImageData <- function(x) {
       return(NULL)
     }
   })
+
   res.mat <- lapply(x$data.mat, function(group) {
     n.rows <- nrow(group)
     if(n.rows > 0) {

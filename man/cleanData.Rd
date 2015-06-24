@@ -9,8 +9,11 @@ cleanData(x, ...)
 \arguments{
 \item{x}{The PlateData/WellData object of interest.}
 
-\item{quants}{A string for choosing betwenn only applying lower, upper,
-              both one none of the quantiles for cleaning up the data.}
+\item{quants}{A string for choosing between only applying lower, upper,
+both one none of the quantiles for cleaning up the data.}
+
+\item{infected}{A string for choosing whether to discard infected or
+                uninfected cells.}
 }
 \value{
 A cleaned up version of the input object.

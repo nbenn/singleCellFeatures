@@ -3,9 +3,11 @@
 #' Given a PlateData/WellData object, remove all images where the cell count
 #' does not lie within the 0.05 and 0.95 quantiles.
 #'
-#' @param x      The PlateData/WellData object of interest.
-#' @param quants A string for choosing betwenn only applying lower, upper,
-#'               both one none of the quantiles for cleaning up the data.
+#' @param x        The PlateData/WellData object of interest.
+#' @param quants   A string for choosing between only applying lower, upper,
+#'                 both one none of the quantiles for cleaning up the data.
+#' @param infected A string for choosing whether to discard infected or
+#'                 uninfected cells.
 #' 
 #' @return A cleaned up version of the input object.
 #' 
@@ -19,16 +21,20 @@ cleanData <- function(x, ...) {
 }
 
 #' @export
-cleanData.PlateData <- function(x) {
-  x$data <- lapply(x$data, cleanData)
+cleanData.PlateData <- function(x, ...) {
+  x$data <- lapply(x$data, cleanData, ...)
   return(x)
 }
 
 #' @export
-cleanData.WellData <- function(x, quants="both") {
+cleanData.WellData <- function(x, quants="both", infected="keepAll") {
   if(!(quants %in% c("upper", "lower", "both", "none"))) {
     stop("expecting a string in c(\"upper\", \"lower\", \"both\", \"none\") ",
          "for quants.")
+  }
+  if(!(infected %in% c("remUninf", "keepAll", "remInf"))) {
+    stop("expecting a string in c(\"remUninf\", \"keepAll\", \"remInf\") ",
+         "for infected.")
   }
   quant1 <- x$data[[1]]$counts.quantiles[1]
   quant2 <- x$data[[1]]$counts.quantiles[2]
@@ -79,6 +85,29 @@ cleanData.WellData <- function(x, quants="both") {
               paste0(counts, collapse=", "), ".")
     }
   }
+
+  if(infected != "keepAll") {
+    x$data <- lapply(x$data, cleanData, infected)
+  }
+  return(x)
+}
+
+#' @export
+cleanData.ImageData <- function(x, infected="keepAll") {
+  if(!(infected %in% c("remUninf", "keepAll", "remInf"))) {
+    stop("expecting a string in c(\"remUninf\", \"keepAll\", \"remInf\") ",
+         "for infected.")
+  }
+  if(infected != "keepAll") {
+    isInf <- as.logical(x$data.mat$Cells[,"Cells.Infection_IsInfected"])
+  }
+
+  if(infected == "remUninf") {
+    x$data.mat$Cells <- x$data.mat$Cells[isInf, , drop=FALSE]
+  } else if(infected == "remInf") {
+    x$data.mat$Cells <- x$data.mat$Cells[!isInf, , drop=FALSE]
+  }
+
   return(x)
 }
 
