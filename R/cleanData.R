@@ -53,7 +53,7 @@ cleanData.WellData <- function(x, quants="both") {
               paste0(discarded, collapse=", "), ") because count.cells ",
               "not in [", quant1, ", ", quant2, "] but ",
               paste0(counts, collapse=", "), ".")
-      x$data <- x$data[rem.upper]
+      x$data <- x$data[-rem.upper]
     } else {
        message("  keeping ", length(discarded), " images (",
               paste0(discarded, collapse=", "), ") despite count.cells ",
@@ -71,7 +71,7 @@ cleanData.WellData <- function(x, quants="both") {
               paste0(discarded, collapse=", "), ") because count.cells ",
               "not in [", quant1, ", ", quant2, "] but ",
               paste0(counts, collapse=", "), ".")
-      x$data <- x$data[rem.lower]
+      x$data <- x$data[-rem.lower]
     } else {
        message("  keeping ", length(discarded), " images (",
               paste0(discarded, collapse=", "), ") despite count.cells ",

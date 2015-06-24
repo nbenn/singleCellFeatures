@@ -25,6 +25,16 @@ getPathogen.DataLocation <- function(x) {
 }
 
 #' @export
+getPathogen.WellData <- function(x) {
+  return(getPathogen(x$meta))
+}
+
+#' @export
+getPathogen.WellMetadata <- function(x) {
+  return(x$experiment.pathogen)
+}
+
+#' @export
 getPathogen.default <- function(x) {
   stop("can only deal with DataLocation (PlateLocation/WellLocation) objects.")
 }

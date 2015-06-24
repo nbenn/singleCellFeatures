@@ -16,9 +16,9 @@ A subset of the original data structure (some of the variables are
 }
 \description{
 Given a design matrix (if the response is also included it has to be named
-"Response"), rank deficiency is corrected by dropping zero variance variables
-and one of each pair of highly correlated variables to make the design matrix
-invertible.
+"Response"), rank deficiency is corrected by dropping zero variance
+variables and one of each pair of highly correlated variables to make the
+design matrix invertible.
 }
 \examples{
 # get gene locations

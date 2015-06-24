@@ -1,0 +1,104 @@
+#' Analyze stability of top n coefficients
+#' 
+#' Resamples the data n.rep times, fits a glm modle using the function glm.fun
+#' and records the top n.hit coefficient names. Returns a table with
+#' frequencies of features that were among the top n.hit coefficients.
+#'
+#' @param well.a      A WellData object for glm analysis.
+#' @param well.b      A second WellData object for glm analysis.
+#' @param n.rep       The number of bootstrap repeats.
+#' @param n.hit       Record this many top coefficients.
+#' @param frac.sample Size of the subsample as fraction of all available data.
+#' @param seed        Seed for reproducible sampling.
+#' @param glm.fun     The glm function to use.
+#' @param n.cores     The number of cores to use for bootstrapping.
+#' @param ...         Further arguments to be passed to the glm function. For
+#'                    example using glmnet, the alpha value.
+#'
+#' @return A vector of frequencies for features that were among the top n.hit
+#'         coefficients.
+#'
+#' @examples
+#' wells <- findWells(plates=c("J110-2C", "J104-2D", "J107-2L"),
+#'                    well.names=c("H2", "H6"))
+#' data  <- unlist(getSingleCellData(wells), recursive=FALSE)
+#' a <- cleanData(data[["J110-2C.H2"]], "lower")
+#' b <- cleanData(data[["J110-2C.H6"]], "lower")
+#' test <- glmBootstrapStability(a, b, n.rep=20)
+#' 
+#' @export
+glmBootstrapStability <- function(well.a, well.b, n.rep=100, n.hit=20,
+                                  frac.sample=0.7, seed=7, glm.fun="glmnet",
+                                  n.cores=detectCores() - 1, ...) {
+
+  if(!any(class(well.a) == "WellData")) {
+    stop("expecting a WellData object for well.a")
+  }
+  if(!any(class(well.b) == "WellData")) {
+    stop("expecting a WellData object for well.b")
+  }
+
+  data.a <- meltData(well.a)
+  data.b <- meltData(well.b)
+  data   <- prepareDataforGlm(data.a$mat$Cells, data.b$mat$Cells, test=NULL)
+
+  if(glm.fun == "glmnet") {
+    dat.x <- as.matrix(data$train[,!(names(data$train) %in% "Response")])
+    dat.y <- data$train$Response
+  } else {
+    dat <- makeRankFull(data$train)
+  }
+
+  registerDoParallel(cores=n.cores)
+  if(glm.fun == "glmnet") {
+    res <- foreach(i=1:n.rep, .combine=cbind) %dopar% {
+      set.seed(i + seed)
+      sample <- sample.int(nrow(dat.x), nrow(dat.x) * frac.sample)
+      model  <- glmnet(dat.x[sample,], dat.y[sample], family="binomial", ...)
+      last   <- model$beta[,ncol(model$beta)]
+      last   <- last[order(abs(last), decreasing=TRUE)]
+      names(last[1:n.hit])
+    }
+  } else if(glm.fun == "step") {
+    res <- foreach(i=1:n.rep, .combine=cbind) %dopar% {
+      set.seed(i + seed)
+      sample <- sample.int(nrow(dat), nrow(dat) * frac.sample)
+      subset <- makeRankFull(dat[sample,])
+      full  <- do.call("glm", list("Response ~ .", family=binomial,
+                                   data=subset))
+      empty <- do.call("glm", list("Response ~ 1", family=binomial,
+                                   data=subset))
+      model <- step(empty, scope=list(lower=formula(empty),
+                    upper=formula(full)), direction="forward", trace=0,
+                    steps=25)
+      coeff <- model$coefficients
+      coeff <- coeff[order(abs(coeff), decreasing=TRUE)]
+      names(coeff[1:n.hit])
+    }
+  } else {
+    res <- foreach(i=1:n.rep, .combine=cbind) %dopar% {
+      set.seed(i + seed)
+      sample <- sample.int(nrow(dat), nrow(dat) * frac.sample)
+      subset <- makeRankFull(dat[sample,])
+      fun <- match.fun(glm.fun)
+      model <- fun("Response ~ .", binomial, subset, ...)
+      coeff <- model$coefficients
+      coeff <- coeff[order(abs(coeff), decreasing=TRUE)]
+      names(coeff[1:n.hit])
+    }
+  }
+
+  counts <- as.data.frame(table(res))
+  counts <- counts[order(counts$Freq, decreasing=TRUE),]
+  rownames(counts) <- counts$res
+  counts$res <- NULL
+
+  output <- counts[1:min(20, nrow(counts)), , drop=FALSE]
+  width  <- max(nchar(rownames(output)))
+  output <- paste(stri_pad_right(rownames(output), width), output$Freq,
+                  sep="  ")
+  message("the feature x occurs n times:")
+  l_ply(output, function(str) message("  ", str))
+
+  return(counts)
+}

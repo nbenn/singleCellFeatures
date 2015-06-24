@@ -1,0 +1,211 @@
+---
+title: "2.3 Perfect separation 2 (J101-2C)"
+author: "Nicolas Bennett"
+date: "`r Sys.Date()`"
+output: rmarkdown::pdf_document
+vignette: >
+  %\VignetteIndexEntry{2.3 Perfect separation 2 (J101-2C)}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r, setup, echo=FALSE}
+suppressPackageStartupMessages(library(knitr))
+suppressPackageStartupMessages(library(singleCellFeatures))
+options(scipen=1, digits=2, singleCellFeatures.progressBars="none")
+opts_chunk$set(fig.height=10, fig.width=14)
+```
+
+The previous investigation, concerned with comparing several glm packages showed issues with perfect separation, which poses problems for finding ML estimates for the affected variables (they dont exist, as the corresponding coefficients are allowed to grow to infinity). The question remains whether this situation is specific to those circumstances or if it can be replicated in many different settings.
+
+```{r, functions, echo=FALSE}
+glmRegular <- function(data) {
+  model <- glm("Response ~ .", binomial, data$train)
+  predi <- as.factor(round(predict(model, newdata=data$test, type="response")))
+  levels(predi) <- c("active", "control")
+  return(compareModeltoTruth(predi, data$test$Response))
+}
+
+glmGlmnet <- function(data) {
+  suppressPackageStartupMessages(library(glmnet))
+  x <- as.matrix(subset(data$train, select=-c(Response)))
+  y <- data$train$Response
+  model <- glmnet(x, y, family="binomial")
+  x.test <- as.matrix(subset(data$test, select=-c(Response)))
+  predi <- predict(model, newx=x.test, type="class")
+  return(compareModeltoTruth(as.factor(predi[,ncol(predi)]), 
+                             data$test$Response))
+}
+
+glmBayesglm <- function(data) {
+  suppressPackageStartupMessages(library(arm))
+  model <- bayesglm("Response ~ .", binomial, data$train)
+  predi <- as.factor(round(predict(model, newdata=data$test, type="response")))
+  levels(predi) <- c("active", "control")
+  return(compareModeltoTruth(predi, data$test$Response))
+}
+
+```
+
+In termy of glm routines, as the main interest lies in detection of complete separation, only working with the standard glm function would suffice. For comparison, also *glmnet* and *bayesglm* are included.
+
+```{r, loadData, collapse=TRUE}
+mtor.loc  <- findWells(pathogens=c("brucella", "salmonella"),
+                       experiments="du-k1", contents="MTOR")
+other.loc <- findWells(plates=sapply(mtor.loc, getBarcode),
+                       well.names=c("H7", "I6"))
+scram.loc <- findWells(plates=sapply(mtor.loc, getBarcode),
+                       contents="SCRAMBLED", well.names="H2")
+
+data <- getSingleCellData(c(mtor.loc, other.loc, scram.loc))
+
+h6 <- lapply(data, function(x) {
+  return(list(meta=x$H6$meta, data=meltData(cleanData(x$H6, "lower"))))
+})
+h7 <- lapply(data, function(x) {
+  return(list(meta=x$H7$meta, data=meltData(cleanData(x$H7, "lower"))))
+})
+i6 <- lapply(data, function(x) {
+  return(list(meta=x$I6$meta, data=meltData(cleanData(x$I6, "lower"))))
+})
+h2 <- lapply(data, function(x) {
+  return(list(meta=x$H2$meta, data=meltData(cleanData(x$H2, "lower"))))
+})
+rm(data)
+```
+
+First, wells containing siRNA for the gene *MTOR* are searched for within the kinome-wide Dharmacon unpooled screens (replicate 1) for brucella and salmonella. Then on the plates containing those wells, scrambled control experiments are looked up (in a well located close to the *MTOR*). Additionally, two further groups of wells in close vicinity of the *MTOR* well are looked up: one in the same row, but next column and one in the same column but one row down. The data for the resulting `r length(c(mtor.loc, other.loc, scram.loc))` wells is loaded, cleaned up and melted into data frames.
+
+```{r, glm1, cache=TRUE, collapse=TRUE}
+dat1.bruc <- suppressMessages(makeRankFull(prepareDataforGlm(
+  h6[["J101-2C"]]$data$mat$Cells, h7[["J101-2C"]]$data$mat$Cells)
+))
+dat1.salm <- suppressMessages(makeRankFull(prepareDataforGlm(
+  h6[["J101-2L"]]$data$mat$Cells, h7[["J101-2L"]]$data$mat$Cells)
+))
+glm111 <- glmRegular(dat1.bruc)
+glm112 <- glmGlmnet(dat1.bruc)
+glm113 <- glmBayesglm(dat1.bruc)
+glm121 <- glmRegular(dat1.salm)
+glm122 <- glmGlmnet(dat1.salm)
+glm123 <- glmBayesglm(dat1.salm)
+rm(dat1.bruc, dat1.salm)
+```
+
+As previously, *MTOR* wells were always compared to scrambled wells, this time the *MTOR* well `H6` is compared to a neighboring well `H7` for both a brucella plate (`J101-2C`) and a salmonella plate (`J101-2L`). The resulting prediction accuracies and Matthews correlation coefficients are:
+
+* regular, brucella: `r glm111$ACC` and `r glm111$MCC`
+* glmnet, brucella: `r glm112$ACC` and `r glm112$MCC`
+* bayesglm, brucella: `r glm113$ACC` and `r glm113$MCC`
+* regular, salmonella: `r glm121$ACC` and `r glm121$MCC`
+* glmnet, salmonella: `r glm122$ACC` and `r glm122$MCC`
+* bayesglm, salmonella: `r glm123$ACC` and `r glm123$MCC`
+
+Both the convergence issues and perfect separation of previous experiments comparing *MTOR* against scrambled wells remain.
+
+```{r, glm2, cache=TRUE, collapse=TRUE}
+dat2.bruc <- suppressMessages(makeRankFull(prepareDataforGlm(
+  do.call(rbind, lapply(h6, function(x) {
+    if(getPathogen(x$meta) == "Brucella") return(x$data$mat$Cells) else return(NULL)
+  })),
+  do.call(rbind, lapply(h7, function(x) {
+    if(getPathogen(x$meta) == "Brucella") return(x$data$mat$Cells) else return(NULL)
+  })))
+))
+dat2.salm <- suppressMessages(makeRankFull(prepareDataforGlm(
+  do.call(rbind, lapply(h6, function(x) {
+    if(getPathogen(x$meta) == "Salmonella") return(x$data$mat$Cells)
+    else return(NULL)
+  })),
+  do.call(rbind, lapply(h7, function(x) {
+    if(getPathogen(x$meta) == "Salmonella") return(x$data$mat$Cells)
+    else return(NULL)
+  })))
+))
+
+glm211 <- glmRegular(dat2.bruc)
+glm212 <- glmGlmnet(dat2.bruc)
+glm213 <- glmBayesglm(dat2.bruc)
+glm221 <- glmRegular(dat2.salm)
+glm222 <- glmGlmnet(dat2.salm)
+glm223 <- glmBayesglm(dat2.salm)
+rm(dat2.bruc, dat2.salm)
+```
+
+In this iteration, the same wells are compared, but instead of only using data from single wells, all available wells are combined (4 each). The resulting prediction accuracies and Matthews correlation coefficients are:
+
+* regular, brucella: `r glm211$ACC` and `r glm211$MCC`
+* glmnet, brucella: `r glm212$ACC` and `r glm212$MCC`
+* bayesglm, brucella: `r glm213$ACC` and `r glm213$MCC`
+* regular, salmonella: `r glm221$ACC` and `r glm221$MCC`
+* glmnet, salmonella: `r glm222$ACC` and `r glm222$MCC`
+* bayesglm, salmonella: `r glm223$ACC` and `r glm223$MCC`
+
+The issue of perfect separation of previous experiments goes away for brucella but not for salmonella, convergence problems disappear and prediction accuracies are much worse but still ok, with values around 80%.
+
+```{r, glm3, cache=TRUE, collapse=TRUE}
+dat3.bruc <- suppressMessages(makeRankFull(prepareDataforGlm(
+  h7[["J101-2C"]]$data$mat$Cells, h2[["J101-2C"]]$data$mat$Cells)
+))
+dat3.salm <- suppressMessages(makeRankFull(prepareDataforGlm(
+  h7[["J101-2L"]]$data$mat$Cells, h2[["J101-2L"]]$data$mat$Cells)
+))
+glm311 <- glmRegular(dat3.bruc)
+glm312 <- glmGlmnet(dat3.bruc)
+glm313 <- glmBayesglm(dat3.bruc)
+glm321 <- glmRegular(dat3.salm)
+glm322 <- glmGlmnet(dat3.salm)
+glm323 <- glmBayesglm(dat3.salm)
+rm(dat3.bruc, dat3.salm)
+```
+
+In this iteration, the same wells are compared, but instead of only using data from single wells, all available wells are combined (4 each). The resulting prediction accuracies and Matthews correlation coefficients are:
+
+* regular, brucella: `r glm311$ACC` and `r glm311$MCC`
+* glmnet, brucella: `r glm312$ACC` and `r glm312$MCC`
+* bayesglm, brucella: `r glm313$ACC` and `r glm313$MCC`
+* regular, salmonella: `r glm321$ACC` and `r glm321$MCC`
+* glmnet, salmonella: `r glm322$ACC` and `r glm322$MCC`
+* bayesglm, salmonella: `r glm323$ACC` and `r glm323$MCC`
+
+The issue of perfect separation of previous experiments goes away for brucella but not for salmonella, convergence problems disappear and prediction accuracies are much worse but still ok, with values around 80%.
+
+```{r, glm4, cache=TRUE, collapse=TRUE}
+dat4.bruc <- suppressMessages(makeRankFull(prepareDataforGlm(
+  do.call(rbind, lapply(h7, function(x) {
+    if(getPathogen(x$meta) == "Brucella") return(x$data$mat$Cells) else return(NULL)
+  })),
+  do.call(rbind, lapply(h2, function(x) {
+    if(getPathogen(x$meta) == "Brucella") return(x$data$mat$Cells) else return(NULL)
+  })))
+))
+dat4.salm <- suppressMessages(makeRankFull(prepareDataforGlm(
+  do.call(rbind, lapply(h7, function(x) {
+    if(getPathogen(x$meta) == "Salmonella") return(x$data$mat$Cells)
+    else return(NULL)
+  })),
+  do.call(rbind, lapply(h2, function(x) {
+    if(getPathogen(x$meta) == "Salmonella") return(x$data$mat$Cells)
+    else return(NULL)
+  })))
+))
+
+glm411 <- glmRegular(dat4.bruc)
+glm412 <- glmGlmnet(dat4.bruc)
+glm413 <- glmBayesglm(dat4.bruc)
+glm421 <- glmRegular(dat4.salm)
+glm422 <- glmGlmnet(dat4.salm)
+glm423 <- glmBayesglm(dat4.salm)
+rm(dat4.bruc, dat4.salm)
+```
+
+In this iteration, the same wells are compared, but instead of only using data from single wells, all available wells are combined (4 each). The resulting prediction accuracies and Matthews correlation coefficients are:
+
+* regular, brucella: `r glm411$ACC` and `r glm411$MCC`
+* glmnet, brucella: `r glm412$ACC` and `r glm412$MCC`
+* bayesglm, brucella: `r glm413$ACC` and `r glm413$MCC`
+* regular, salmonella: `r glm421$ACC` and `r glm421$MCC`
+* glmnet, salmonella: `r glm422$ACC` and `r glm422$MCC`
+* bayesglm, salmonella: `r glm423$ACC` and `r glm423$MCC`
+
+The issue of perfect separation of previous experiments goes away for brucella but not for salmonella, convergence problems disappear and prediction accuracies are much worse but still ok, with values around 80%.

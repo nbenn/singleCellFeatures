@@ -2,8 +2,8 @@
 #' 
 #' Find all wells on all plates using the following set of parameters:
 #'
-#' @param pathogens       Narrow down the results by selecting pathogens (exact, 
-#'                        matches, ignoring case).
+#' @param pathogens       Narrow down the results by selecting pathogens
+#'                        (exact, matches, ignoring case).
 #' @param experiments     Name of the experiment to be considered (regular
 #'                        expression, case insensitive).
 #' @param plates          A vector of regular expressions for plates.
@@ -14,8 +14,8 @@
 #'                        case insensitive matching.
 #' @param well.types      A vector of regular expressions that is matched with
 #'                        the well.types column in well databases.
-#' @param contents        This vector of strings/integers is matched against the
-#'                        three well database columns id.openBIS,
+#' @param contents        This vector of strings/integers is matched against
+#'                        the three well database columns id.openBIS,
 #'                        id.infx and name via case insensitive regular
 #'                        expressions. In case it is specified, the next three
 #'                        parameters are ignored.

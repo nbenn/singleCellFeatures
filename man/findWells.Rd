@@ -10,8 +10,8 @@ findWells(pathogens = NULL, experiments = NULL, plates = NULL,
   name = NULL, verbose = FALSE)
 }
 \arguments{
-\item{pathogens}{Narrow down the results by selecting pathogens (exact,
-matches, ignoring case).}
+\item{pathogens}{Narrow down the results by selecting pathogens
+(exact, matches, ignoring case).}
 
 \item{experiments}{Name of the experiment to be considered (regular
 expression, case insensitive).}
@@ -29,8 +29,8 @@ case insensitive matching.}
 \item{well.types}{A vector of regular expressions that is matched with
 the well.types column in well databases.}
 
-\item{contents}{This vector of strings/integers is matched against the
-three well database columns id.openBIS,
+\item{contents}{This vector of strings/integers is matched against
+the three well database columns id.openBIS,
 id.infx and name via case insensitive regular
 expressions. In case it is specified, the next three
 parameters are ignored.}
