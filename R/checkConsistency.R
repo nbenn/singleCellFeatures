@@ -31,8 +31,8 @@ checkConsistency.PlateData <- function(x) {
     compare <- buildPrototypeHelper(well$data[[1]])[-2]
     comparison <- all.equal(compare, proto)
     if(!is.logical(comparison)) {
-      message("for plate ", compare$plate.barcode, ", well ", getWellName(well),
-              ":\n  ", paste(comparison, collpase="\n  "))
+      message("for plate ", compare$plate.barcode, ", well ",
+              getWellName(well), ":\n  ", paste(comparison, collpase="\n  "))
     }
     within.well <- checkConsistency(well)
     if(within.well & is.logical(comparison)) return(TRUE)

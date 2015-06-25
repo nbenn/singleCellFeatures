@@ -7,7 +7,8 @@
 extractFeatures(x, select = NULL, drop = NULL, features = NULL)
 }
 \arguments{
-\item{x}{The original Data object, containing the superset of features}
+\item{x}{The original Data object, containing the superset of
+features}
 
 \item{select}{A vector of strings (regular expressions), specifying
 features to keep}
@@ -15,13 +16,14 @@ features to keep}
 \item{drop}{A vector of strings (regular expressions), specifying
 features to drop}
 
-\item{features}{For performance reasons, the complete set of features to keep
-                can be determined in advance and specified here (in this
-                case, arguments select/drop will be ignored if not NULL)}
+\item{features}{For performance reasons, the complete set of features to
+                keep can be determined in advance and specified here (in
+                this case, arguments select/drop will be ignored if not
+                NULL)}
 }
 \value{
-A Data object of the same type as x, but only storing a subset of all
-        features.
+A Data object of the same type as x, but only storing a subset of
+        all features.
 }
 \description{
 Given a Data object and either a set of regular expressions to select or

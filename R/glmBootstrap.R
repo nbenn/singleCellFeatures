@@ -29,18 +29,30 @@
 #' @export
 glmBootstrapStability <- function(well.a, well.b, n.rep=100, n.hit=20,
                                   frac.sample=0.7, seed=7, glm.fun="glmnet",
-                                  n.cores=detectCores() - 1, ...) {
-
-  if(!any(class(well.a) == "WellData")) {
-    stop("expecting a WellData object for well.a")
+                                  n.cores=detectCores(), ...) {
+  if(any(class(well.a) == "WellData") & any(class(well.b) == "WellData")) {
+    data.a <- meltData(well.a)
+    data.b <- meltData(well.b)
+    data   <- prepareDataforGlm(data.a$mat$Cells, data.b$mat$Cells, test=NULL)
+  } else {
+    if(class(well.a) == "list" & class(well.b) == "list") {
+      class.a <- sapply(well.a, function(x) any(class(x) == "WellData"))
+      class.b <- sapply(well.b, function(x) any(class(x) == "WellData"))
+      if(!all(class.a) & !all(class.b)) {
+        stop("expecting WellData or lists of WellData objects for well.a/",
+             "well.b")
+      }
+      data.a <- do.call(rbind, lapply(well.a, function(x) {
+        meltData(x)$mat$Cells
+      }))
+      data.b <- do.call(rbind, lapply(well.b, function(x) {
+        meltData(x)$mat$Cells
+      }))
+      data   <- prepareDataforGlm(data.a, data.b, test=NULL)
+    } else {
+      stop("expexing lists or WellData objects for well.a/well.b")
+    }
   }
-  if(!any(class(well.b) == "WellData")) {
-    stop("expecting a WellData object for well.b")
-  }
-
-  data.a <- meltData(well.a)
-  data.b <- meltData(well.b)
-  data   <- prepareDataforGlm(data.a$mat$Cells, data.b$mat$Cells, test=NULL)
 
   if(glm.fun == "glmnet") {
     dat.x <- as.matrix(data$train[,!(names(data$train) %in% "Response")])

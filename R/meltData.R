@@ -142,47 +142,56 @@ meltData.WellData <- function(x) {
 meltData.ImageData <- function(x) {
   well.index  <- getWellIndex1D(x$well.row, x$well.col, NULL, x$image.total)
   well.name   <- paste0(x$well.row, x$well.col)
+  
   res.vec <- lapply(x$data.vec, function(group) {
-    if (nrow(group) > 0) {
-      newcols <- data.frame(x$image.index, well.index, well.name,
-                            x$plate, stringsAsFactors=FALSE)
-      colnames(newcols) <- c("Image.Index", "Well.Index", "Well.Name",
-                             "Plate.Barcode")
-      return(cbind(group, newcols))
-    } else {
+    if(is.null(group)) {
       return(NULL)
+    } else {
+      if (nrow(group) > 0) {
+        newcols <- data.frame(x$image.index, well.index, well.name,
+                              x$plate, stringsAsFactors=FALSE)
+        colnames(newcols) <- c("Image.Index", "Well.Index", "Well.Name",
+                               "Plate.Barcode")
+        return(cbind(group, newcols))
+      } else {
+        return(NULL)
+      }
     }
   })
 
   res.mat <- lapply(x$data.mat, function(group) {
-    n.rows <- nrow(group)
-    if(n.rows > 0) {
-      image.ind      <- rep(x$image.index, n.rows)
-      dim(image.ind) <- c(n.rows, 1)
-      well.ind       <- rep(well.index, n.rows)
-      dim(well.ind)  <- c(n.rows, 1)
-      well.nme       <- rep(well.name, n.rows)
-      dim(well.nme)  <- c(n.rows, 1)
-      plate          <- rep(x$plate, n.rows)
-      dim(plate)     <- c(n.rows, 1)
-
-      if("Image.Group" %in% colnames(x$data.vec$Image)) {
-        image.group      <- rep(x$data.vec$Image[1,"Image.Group"], n.rows)
-        dim(image.group) <- c(n.rows, 1)
-        info      <- data.frame(image.ind, well.ind, well.nme, plate,
-                                image.group, stringsAsFactors=FALSE)
-        colnames(info) <- c("Image.Index", "Well.Index", "Well.Name",
-                            "Plate.Barcode", "Image.Group")
-      } else {
-        info      <- data.frame(image.ind, well.ind, well.nme, plate,
-                                stringsAsFactors=FALSE)
-        colnames(info) <- c("Image.Index", "Well.Index", "Well.Name",
-                            "Plate.Barcode")
-      }
-
-      return(cbind(group, info))
-    } else {
+    if(is.null(group)) {
       return(NULL)
+    } else {
+      n.rows <- nrow(group)
+      if(n.rows > 0) {
+        image.ind      <- rep(x$image.index, n.rows)
+        dim(image.ind) <- c(n.rows, 1)
+        well.ind       <- rep(well.index, n.rows)
+        dim(well.ind)  <- c(n.rows, 1)
+        well.nme       <- rep(well.name, n.rows)
+        dim(well.nme)  <- c(n.rows, 1)
+        plate          <- rep(x$plate, n.rows)
+        dim(plate)     <- c(n.rows, 1)
+
+        if("Image.Group" %in% colnames(x$data.vec$Image)) {
+          image.group      <- rep(x$data.vec$Image[1,"Image.Group"], n.rows)
+          dim(image.group) <- c(n.rows, 1)
+          info      <- data.frame(image.ind, well.ind, well.nme, plate,
+                                  image.group, stringsAsFactors=FALSE)
+          colnames(info) <- c("Image.Index", "Well.Index", "Well.Name",
+                              "Plate.Barcode", "Image.Group")
+        } else {
+          info      <- data.frame(image.ind, well.ind, well.nme, plate,
+                                  stringsAsFactors=FALSE)
+          colnames(info) <- c("Image.Index", "Well.Index", "Well.Name",
+                              "Plate.Barcode")
+        }
+
+        return(cbind(group, info))
+      } else {
+        return(NULL)
+      }
     }
   })
   return(list(vec=res.vec, mat=res.mat, lst=x$data.lst))

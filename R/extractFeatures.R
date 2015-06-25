@@ -4,17 +4,19 @@
 #' discard features or a set of features, return the same object type as the
 #' original, but only with a subset of features.
 #'
-#' @param x        The original Data object, containing the superset of features
+#' @param x        The original Data object, containing the superset of
+#'                 features
 #' @param select   A vector of strings (regular expressions), specifying
 #'                 features to keep
 #' @param drop     A vector of strings (regular expressions), specifying
 #'                 features to drop
-#' @param features For performance reasons, the complete set of features to keep
-#'                 can be determined in advance and specified here (in this
-#'                 case, arguments select/drop will be ignored if not NULL)
+#' @param features For performance reasons, the complete set of features to
+#'                 keep can be determined in advance and specified here (in
+#'                 this case, arguments select/drop will be ignored if not
+#'                 NULL)
 #'
-#' @return A Data object of the same type as x, but only storing a subset of all
-#'         features.
+#' @return A Data object of the same type as x, but only storing a subset of
+#'         all features.
 #'
 #' @examples
 #' features <- c("^Cells.Location_Center_X$",
@@ -55,7 +57,8 @@ extractFeatures.PlateData <- function(x, select=NULL, drop=NULL,
 }
 
 #' @export
-extractFeatures.WellData <- function(x, select=NULL, drop=NULL, features=NULL) {
+extractFeatures.WellData <- function(x, select=NULL, drop=NULL,
+                                     features=NULL) {
   if(is.null(features)) {
     features <- extractFeaturesMatchingHelper(x, select, drop)
     select <- NULL
@@ -80,46 +83,36 @@ extractFeatures.ImageData <- function(x, select=NULL, drop=NULL,
   if(length(features) == 0 | !is.vector(features, mode = "character")) {
     message("no features are removed (zero length or not a character vector).")
   } else {
-    x$data.vec <- lapply(
-      x$data.vec,
-      function(object, feat) {
-        match <- names(object) %in% features
-        if(sum(match) == 0) return(NULL)
-        else return(object[match])
-      },
-      features
-    )
+    x$data.vec <- lapply(x$data.vec, function(object, feat) {
+      match <- names(object) %in% features
+      if(sum(match) == 0) return(NULL)
+      else return(object[match])
+    }, features)
+
     mat <- unlist(lapply(x$data.mat, function(group) {
       res <- colnames(group)
       if (is.null(res)) res <- names(group)
       return(res)
     }))
-    x$data.mat <- lapply(
-      x$data.mat,
-      function(object, feat) {
-        nms <- colnames(object)
-        if(!is.null(nms)) {
-          match <- nms %in% features
-          if(sum(match) == 0) return(NULL)
-          else return(object[,match])
-        } else {
-          nms <- names(object)
-          match <- nms %in% features
-          if(sum(match) == 0) return(NULL)
-          else return(object[match])
-        }
-      },
-      features
-    )
-    x$data.lst <- lapply(
-      x$data.lst,
-      function(object, feat) {
-        match <- names(object) %in% features
+    x$data.mat <- lapply(x$data.mat, function(object, feat) {
+      nms <- colnames(object)
+      if(!is.null(nms)) {
+        match <- nms %in% features
+        if(sum(match) == 0) return(NULL)
+        else return(object[,match])
+      } else {
+        nms <- names(object)
+        match <- nms %in% features
         if(sum(match) == 0) return(NULL)
         else return(object[match])
-      },
-      features
-    )
+      }
+    }, features)
+
+    x$data.lst <- lapply(x$data.lst, function(object, feat) {
+      match <- names(object) %in% features
+      if(sum(match) == 0) return(NULL)
+      else return(object[match])
+    }, features)
   }
   return(x)
 }
