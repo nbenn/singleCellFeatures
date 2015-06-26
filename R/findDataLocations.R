@@ -1,4 +1,83 @@
-#' Find wells
+#' Find PlateLocations
+#' 
+#' Find all plates using the following set of parameters:
+#'
+#' @param pathogens       Narrow down the results by selecting pathogens
+#'                        (exact, matches, ignoring case).
+#' @param experiments     Name of the experiment to be considered (regular
+#'                        expression, case insensitive).
+#' @param plates          A vector of regular expressions for plates.
+#' @param well.types      A vector of regular expressions that is matched with
+#'                        the well.types column in well databases.
+#' @param contents        This vector of strings/integers is matched against
+#'                        the three well database columns id.openBIS,
+#'                        id.infx and name via case insensitive regular
+#'                        expressions. In case it is specified, the next three
+#'                        parameters are ignored.
+#' @param id.openBIS      A vector of regular expressions that is matched
+#'                        against the id.openBIS column.
+#' @param id.infx         A vector of regular expressions that is matched
+#'                        against the id.infx column.
+#' @param name            A vector of regular expressions that is matched
+#'                        against the name column.
+#'
+#' @return A list of PlateLocation objects.
+#'
+#' @examples
+#' set1 <- findPlates(contents="MTOR", experiments="brucella-du-k")
+#' set2 <- findPlates(contents=2475, experiments="brucella-au-k[1-3]")
+#' set3 <- findPlates(contents="SCRAMBLED", experiments="brucella-du-k")
+#'
+#' @export
+
+findPlates <- function(pathogens=NULL, experiments=NULL, plates=NULL,
+                       well.types=NULL, contents=NULL, id.openBIS=NULL,
+                       id.infx=NULL, name=NULL, verbose=FALSE) {
+
+  data(plateDatabase, envir=environment())
+  curr.plates <- plate.database
+  if(verbose) message("starting with ", nrow(curr.plates), " plates.")
+  # if pathogens specified, exclude others
+  curr.plates <- processPathogens(pathogens, curr.plates, verbose)
+  # if experiments specified, exclude others
+  curr.plates <- processExperiments(experiments, curr.plates, verbose)
+  # if plates specified, exclude others
+  curr.plates <- processPlates(plates, curr.plates, verbose)
+  # print current plate set
+  printPlateSet(verbose, curr.plates)
+  if(any(c(!is.null(well.types), !is.null(contents), !is.null(id.openBIS),
+           !is.null(id.infx), !is.null(name)))) {
+    # find all well databases to be loaded
+    well.db <- getWells(curr.plates, verbose)
+    # if well types specified, exclude others
+    well.db <- processWellTypes(well.types, well.db, verbose)
+    # if contents specified, exclude others
+    well.db <- processContents(contents, id.openBIS, id.infx, name, well.db,
+                               verbose)
+    # remove wells on plates that have no single cell features available
+    keep <- well.db$barcode %in% plate.database$Barcode
+    if(verbose & sum(!keep) > 0) {
+      message("removing ", sum(!keep), " wells because they have no single",
+              " cell features available.")
+    }
+    well.db <- well.db[keep,]
+    # turn wells back into plates
+    result <- unique(well.db$barcode)
+  } else {
+    result <- unique(curr.plates$Barcode)
+  }
+
+  if(length(result) == 0) {
+    stop("no matching plates found.")
+  } else {
+    message("there are ", length(result), " plates remaining:\n  ",
+            paste(result, collapse=", "))
+    res.lst <- lapply(result, function(bc) return(PlateLocation(bc)))
+    return(res.lst)
+  }
+}
+
+#' Find WellLocations
 #' 
 #' Find all wells on all plates using the following set of parameters:
 #'
@@ -39,10 +118,61 @@ findWells <- function(pathogens=NULL, experiments=NULL, plates=NULL,
                       well.rows=NULL, well.cols=NULL, well.names=NULL,
                       well.types=NULL, contents=NULL, id.openBIS=NULL,
                       id.infx=NULL, name=NULL, verbose=FALSE) {
+
   data(plateDatabase, envir=environment())
   curr.plates <- plate.database
   if(verbose) message("starting with ", nrow(curr.plates), " plates.")
   # if pathogens specified, exclude others
+  curr.plates <- processPathogens(pathogens, curr.plates, verbose)
+  # if experiments specified, exclude others
+  curr.plates <- processExperiments(experiments, curr.plates, verbose)
+  # if plates specified, exclude others
+  curr.plates <- processPlates(plates, curr.plates, verbose)
+  # print current plate set
+  printPlateSet(verbose, curr.plates)
+  # find all well databases to be loaded
+  well.db <- getWells(curr.plates, verbose)
+  # if well rows specified, exclude others
+  well.db <- processWellRows(well.rows, well.db, verbose)
+  # if well columns specified, exclude others
+  well.db <- processWellCols(well.cols, well.db, verbose)
+  # if well names specified, exclude others
+  well.db <- processWellNames(well.names, well.db, verbose)
+  # if well types specified, exclude others
+  well.db <- processWellTypes(well.types, well.db, verbose)
+  # if contents specified, exclude others
+  well.db <- processContents(contents, id.openBIS, id.infx, name, well.db,
+                             verbose)
+  # remove wells on plates that have no single cell features available
+  keep <- well.db$barcode %in% plate.database$Barcode
+  if(verbose & sum(!keep) > 0) {
+    message("removing ", sum(!keep), " wells because they have no single cell",
+            " features available.")
+  }
+  well.db <- well.db[keep,]
+
+  message("there are ", nrow(well.db), " wells remaining:")
+  out <- cbind(
+    stri_pad_right(well.db$barcode, max(nchar(well.db$barcode))),
+    stri_pad_right(paste0(well.db$well.row, well.db$well.col), 3),
+    stri_pad_right(well.db$well.type, max(nchar(well.db$well.type))),
+    stri_pad_right(well.db$id.openBIS, max(nchar(well.db$id.openBIS))),
+    stri_pad_right(well.db$id.infx,
+                   max(nchar(well.db$id.infx))),
+    stri_pad_right(well.db$name, max(nchar(well.db$name)))
+  )
+  apply(out, 1, function(row) {
+    message("  ", paste(row, collapse="  "))
+  })
+
+  if(nrow(well.db) == 0) stop("no matching wells found.")
+  res.lst <- apply(well.db, 1, function(row) {
+    WellLocation(row[["barcode"]], row[["well.row"]], row[["well.col"]])
+  })
+  return(res.lst)
+}
+
+processPathogens <- function(pathogens, curr.plates, verbose) {
   if(!is.null(pathogens)) {
     if(!is.character(pathogens)) {
       stop("expecting a vector of characters for pathogens")
@@ -57,7 +187,10 @@ findWells <- function(pathogens=NULL, experiments=NULL, plates=NULL,
               "remaining.")
     }
   }
-  # if experiments specified, exclude others
+  return(curr.plates)
+}
+
+processExperiments <- function(experiments, curr.plates, verbose) {
   if(!is.null(experiments)) {
     if(!is.character(experiments)) {
       stop("expecting a vector of characters for experiments")
@@ -71,7 +204,10 @@ findWells <- function(pathogens=NULL, experiments=NULL, plates=NULL,
               "remaining.")
     }
   }
-  # if plates specified, exclude others
+  return(curr.plates)
+}
+
+processPlates <- function(plates, curr.plates, verbose) {
   if(!is.null(plates)) {
     if(!is.character(plates)) {
       stop("expecting a vector of characters for plates")
@@ -85,7 +221,10 @@ findWells <- function(pathogens=NULL, experiments=NULL, plates=NULL,
               "remaining.")
     }
   }
-  # print current plate set
+  return(curr.plates)
+}
+
+printPlateSet <- function(verbose, curr.plates) {
   if(verbose) {
     message("there are ", nrow(curr.plates), " plates remaining:")
     out <- cbind(
@@ -100,7 +239,9 @@ findWells <- function(pathogens=NULL, experiments=NULL, plates=NULL,
       message("  ", paste(row, collapse="  "))
     })
   }
-  # find all well databases to be loaded
+}
+
+getWells <- function(curr.plates, verbose) {
   well.db <- lapply(unique(curr.plates$Group), function(pathogen) {
     if(pathogen == "MOCK") {
       db.name  <- "wellDatabaseMock"
@@ -128,7 +269,10 @@ findWells <- function(pathogens=NULL, experiments=NULL, plates=NULL,
     message("using the current set of plates, ", nrow(well.db),
             " wells remain.")
   }
-  # if well rows specified, exclude others
+  return(well.db)
+}
+
+processWellRows <- function(well.rows, well.db, verbose) {
   if(!is.null(well.rows)) {
     if(!is.character(well.rows)) {
       stop("expecting a vector of characters for well.rows")
@@ -139,7 +283,10 @@ findWells <- function(pathogens=NULL, experiments=NULL, plates=NULL,
               "remaining.")
     }
   }
-  # if well columns specified, exclude others
+  return(well.db)
+}
+
+processWellCols <- function(well.cols, well.db, verbose) {
   if(!is.null(well.cols)) {
     if(!is.integer(well.cols)) {
       stop("expecting a vector of integers for well.cols")
@@ -150,7 +297,10 @@ findWells <- function(pathogens=NULL, experiments=NULL, plates=NULL,
               "remaining.")
     }
   }
-  # if well names specified, exclude others
+  return(well.db)
+}
+
+processWellNames <- function(well.names, well.db, verbose) {
   if(!is.null(well.names)) {
     if(!is.character(well.names)) {
       stop("expecting a vector of characters for well.names")
@@ -162,7 +312,10 @@ findWells <- function(pathogens=NULL, experiments=NULL, plates=NULL,
               "remaining.")
     }
   }
-  # if well types specified, exclude others
+  return(well.db)
+}
+
+processWellTypes <- function(well.types, well.db, verbose) {
   if(!is.null(well.types)) {
     if(!is.character(well.types)) {
       stop("expecting a vector of characters for well.types")
@@ -176,7 +329,11 @@ findWells <- function(pathogens=NULL, experiments=NULL, plates=NULL,
               "remaining.")
     }
   }
-  # if contents specified, exclude others
+  return(well.db)
+}
+
+processContents <- function(contents, id.openBIS, id.infx, name, well.db,
+                            verbose) {
   if(!is.null(contents)) {
     if(!(is.character(contents) | is.integer(contents))) {
       stop("expecting a vector of characters or integers for contents")
@@ -240,32 +397,5 @@ findWells <- function(pathogens=NULL, experiments=NULL, plates=NULL,
       }
     }
   }
-
-  # remove wells on plates that have no single cell features available
-  keep <- well.db$barcode %in% plate.database$Barcode
-  if(verbose & sum(!keep) > 0) {
-    message("removing ", sum(!keep), " wells because they have no single cell",
-            " features available.")
-  }
-  well.db <- well.db[keep,]
-
-  message("there are ", nrow(well.db), " wells remaining:")
-  out <- cbind(
-    stri_pad_right(well.db$barcode, max(nchar(well.db$barcode))),
-    stri_pad_right(paste0(well.db$well.row, well.db$well.col), 3),
-    stri_pad_right(well.db$well.type, max(nchar(well.db$well.type))),
-    stri_pad_right(well.db$id.openBIS, max(nchar(well.db$id.openBIS))),
-    stri_pad_right(well.db$id.infx,
-                   max(nchar(well.db$id.infx))),
-    stri_pad_right(well.db$name, max(nchar(well.db$name)))
-  )
-  apply(out, 1, function(row) {
-    message("  ", paste(row, collapse="  "))
-  })
-
-  if(nrow(well.db) == 0) stop("no matching wells found.")
-  res.lst <- apply(well.db, 1, function(row) {
-    WellLocation(row[["barcode"]], row[["well.row"]], row[["well.col"]])
-  })
-  return(res.lst)
+  return(well.db)
 }

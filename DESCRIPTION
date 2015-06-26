@@ -7,6 +7,7 @@ Author: Nicolas Bennett
 Maintainer: Nicolas Bennett <nbennett@ethz.ch>
 Depends: Matrix, foreach, doParallel, stringi, yaml, plyr,
   lpSolveAPI (>= 5.5.0.14), glmnet, R.matlab
+SystemRequirements: pigz
 Description: More about what it does (maybe more than one line)
 License: What license is it under?
 Suggests: knitr
