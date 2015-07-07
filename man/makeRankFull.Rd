@@ -8,7 +8,7 @@ makeRankFull(data)
 }
 \arguments{
 \item{data}{Matrix/data frame holding the design matrix and optionally a
-               response vector named "Response"}
+            response vector named "Response"}
 }
 \value{
 A subset of the original data structure (some of the variables are

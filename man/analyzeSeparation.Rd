@@ -4,17 +4,24 @@
 \alias{analyzeSeparation}
 \title{Find a hyperplane separating the sample points}
 \usage{
-analyzeSeparation(data, tol1 = 0.001, tol2 = 1e-09)
+analyzeSeparation(data, max.dim = 2, all.dim = TRUE, tol1 = 0.001,
+  tol2 = 1e-09)
 }
 \arguments{
 \item{data}{A data.frame containing a column called Response, holding a
 binary vector.}
 
-\item{tol1}{The tolerance for considering the points separated: the sum of
-all betas has to be larger than tol1.}
+\item{max.dim}{The maximum number of features to simultaneously be
+considered for allowing data to be separated. Hence, if
+max.dim == 2, all pairs of features are screened.}
+
+\item{all.dim}{Analyze all features simulatneously.}
+
+\item{tol1}{The tolerance for considering the points separated: the sum
+of all betas has to be larger than tol1.}
 
 \item{tol2}{The tolerance for considering an individual feature to be
-            involved.}
+               involved.}
 }
 \value{
 A list with two slots: a logical value saying if the data points are
@@ -27,22 +34,14 @@ the linear program is taken from the package safeBinaryRegression.
 }
 \examples{
 # get gene locations
-mtor.loc <- findWells(experiments="brucella-du-k1", contents="MTOR")
-scra.loc <- findWells(plates=sapply(mtor.loc, getBarcode),
-                      contents="SCRAMBLED", well.names="G23")
-# combine for faster fetching
-data     <- getSingleCellData(list(mtor.loc[[1]], scra.loc[[1]]))
-mtor.dat <- meltData(cleanData(data[[1]]$H6))
-scra.dat <- meltData(cleanData(data[[1]]$G23))
-# prepare data for glm
-data <- prepareDataforGlm(mtor.dat$mat$Cells, scra.dat$mat$Cells)
-data <- makeRankFull(data)
-# run glm
-model <- glm("Response ~ .", binomial, data$train)
-# compare to testing data
-predi <- as.factor(round(predict(model, newdata=data$test,
-                                 type="response")))
-levels(predi) <- c("active", "control")
-comparison <- compareModeltoTruth(predi, data$test$Response)
+wells <- findWells(plates=c("J101-2C", "J107-2D", "J110-2L"),
+                   well.names=c("H2", "H6"))
+data  <- unlist(getSingleCellData(wells), recursive=FALSE)
+h21 <- list(meta=data[["J101-2C.H2"]]$meta,
+            data=meltData(cleanData(data[["J101-2C.H2"]], "lower")))
+h61 <- list(meta=data[["J101-2C.H6"]]$meta,
+            data=meltData(cleanData(data[["J101-2C.H6"]], "lower")))
+dat1 <- prepareDataforGlm(h61$data$mat$Cells, h21$data$mat$Cells, test=NULL)
+sep1 <- analyzeSeparation(dat1)
 }
 

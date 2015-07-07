@@ -73,8 +73,8 @@ prepareDataforGlm <- function(active, control, drop=NULL, test=10) {
 #' variables and one of each pair of highly correlated variables to make the
 #' design matrix invertible.
 #'
-#' @param data    Matrix/data frame holding the design matrix and optionally a
-#'                response vector named "Response"
+#' @param data Matrix/data frame holding the design matrix and optionally a
+#'             response vector named "Response"
 #'
 #' @return A subset of the original data structure (some of the variables are
 #'         removed)
@@ -228,38 +228,35 @@ compareModeltoTruth <- function(estim, truth) {
 #' hyperplane separating the two groups of data points. The core code solving
 #' the linear program is taken from the package safeBinaryRegression.
 #'
-#' @param data A data.frame containing a column called Response, holding a
-#'             binary vector.
-#' @param tol1 The tolerance for considering the points separated: the sum of
-#'             all betas has to be larger than tol1.
-#' @param tol2 The tolerance for considering an individual feature to be
-#'             involved.
+#' @param data    A data.frame containing a column called Response, holding a
+#'                binary vector.
+#' @param max.dim The maximum number of features to simultaneously be
+#'                considered for allowing data to be separated. Hence, if
+#'                max.dim == 2, all pairs of features are screened. 
+#' @param all.dim Analyze all features simulatneously.
+#' @param tol1    The tolerance for considering the points separated: the sum
+#'                of all betas has to be larger than tol1.
+#' @param tol2    The tolerance for considering an individual feature to be
+#'                involved.
 #'
 #' @return A list with two slots: a logical value saying if the data points are
 #'         separated and a vector of distances to the separating hyperplane.
 #'
 #' @examples
 #' # get gene locations
-#' mtor.loc <- findWells(experiments="brucella-du-k1", contents="MTOR")
-#' scra.loc <- findWells(plates=sapply(mtor.loc, getBarcode),
-#'                       contents="SCRAMBLED", well.names="G23")
-#' # combine for faster fetching
-#' data     <- getSingleCellData(list(mtor.loc[[1]], scra.loc[[1]]))
-#' mtor.dat <- meltData(cleanData(data[[1]]$H6))
-#' scra.dat <- meltData(cleanData(data[[1]]$G23))
-#' # prepare data for glm
-#' data <- prepareDataforGlm(mtor.dat$mat$Cells, scra.dat$mat$Cells)
-#' data <- makeRankFull(data)
-#' # run glm
-#' model <- glm("Response ~ .", binomial, data$train)
-#' # compare to testing data
-#' predi <- as.factor(round(predict(model, newdata=data$test,
-#'                                  type="response")))
-#' levels(predi) <- c("active", "control")
-#' comparison <- compareModeltoTruth(predi, data$test$Response)
+#' wells <- findWells(plates=c("J101-2C", "J107-2D", "J110-2L"),
+#'                    well.names=c("H2", "H6"))
+#' data  <- unlist(getSingleCellData(wells), recursive=FALSE)
+#' h21 <- list(meta=data[["J101-2C.H2"]]$meta,
+#'             data=meltData(cleanData(data[["J101-2C.H2"]], "lower")))
+#' h61 <- list(meta=data[["J101-2C.H6"]]$meta,
+#'             data=meltData(cleanData(data[["J101-2C.H6"]], "lower")))
+#' dat1 <- prepareDataforGlm(h61$data$mat$Cells, h21$data$mat$Cells, test=NULL)
+#' sep1 <- analyzeSeparation(dat1)
 #'
 #' @export
-analyzeSeparation <- function(data, tol1=1e-3, tol2=1e-09) {
+analyzeSeparation <- function(data, max.dim=2, all.dim=TRUE,
+                              tol1=1e-3, tol2=1e-09) {
   separation <- function(x, y, tol1, purpose="find") {
     n <- dim(x)[1]
     p <- dim(x)[2]
@@ -312,6 +309,8 @@ analyzeSeparation <- function(data, tol1=1e-3, tol2=1e-09) {
   if(!"Response" %in% colnames(data)) {
     stop("expecting a column called \"Response\" in data")
   }
+  if(max.dim < 1) stop("max.dim expected to be >= 1")
+
   # ensure full rank for data; is required for the simplex step
   data <- makeRankFull(data)
   # first check each coordinate individually
@@ -356,32 +355,41 @@ analyzeSeparation <- function(data, tol1=1e-3, tol2=1e-09) {
                          rownames(interesting))))
     if(nrow(completely) > 0) {
       message("for ", nrow(completely), " features, complete separation ",
-              "occurs:\n  ", stri_pad_right("feature", col1), "  coverage    ",
-              "shared.act  shared.ctr\n  ",
+              "occurs:\n  ", stri_pad_right("feature", col1), "  covarge ",
+              "shrd.ac shrd.ct\n  ",
               paste(stri_pad_right(rownames(completely), col1),
-                    format(completely$coverage, digits=8, width=10),
-                    format(completely$shared.act, digits=8, width=10),
-                    format(completely$shared.ctr, digits=8, width=10),
+                    formatC(completely$coverage, digits=4, width=6,
+                            format="f"),
+                    formatC(completely$shared.act, digits=4, width=6,
+                            format="f"),
+                    formatC(completely$shared.ctr, digits=4, width=6,
+                            format="f"),
                     sep="  ", collapse="\n  "))
     }
     if(nrow(quasi) > 0) {
       message("for ", nrow(quasi), " features, quasi-separation ",
-              "occurs:\n  ", stri_pad_right("feature", col1), "  coverage    ",
-              "shared.act  shared.ctr\n  ",
+              "occurs:\n  ", stri_pad_right("feature", col1), "  covarge ",
+              "shrd.ac shrd.ct\n  ",
               paste(stri_pad_right(rownames(quasi), col1),
-                    format(quasi$coverage, digits=8, width=10),
-                    format(quasi$shared.act, digits=8, width=10),
-                    format(quasi$shared.ctr, digits=8, width=10),
+                    formatC(quasi$coverage, digits=4, width=6,
+                            format="f"),
+                    formatC(quasi$shared.act, digits=4, width=6,
+                            format="f"),
+                    formatC(quasi$shared.ctr, digits=4, width=6,
+                            format="f"),
                     sep="  ", collapse="\n  "))
     }
     if(nrow(interesting) > 0) {
       message("for ", nrow(interesting), " features, low coverage ",
-              "occurs:\n  ", stri_pad_right("feature", col1), "  coverage    ",
-              "shared.act  shared.ctr\n  ",
+              "occurs:\n  ", stri_pad_right("feature", col1), "  covarge ",
+              "shrd.ac shrd.ct\n  ",
               paste(stri_pad_right(rownames(interesting), col1),
-                    format(interesting$coverage, digits=8, width=10),
-                    format(interesting$shared.act, digits=8, width=10),
-                    format(interesting$shared.ctr, digits=8, width=10),
+                    formatC(interesting$coverage, digits=4, width=6,
+                            format="f"),
+                    formatC(interesting$shared.act, digits=4, width=6,
+                            format="f"),
+                    formatC(interesting$shared.ctr, digits=4, width=6,
+                            format="f"),
                     sep="  ", collapse="\n  "))
     }
   }
@@ -397,62 +405,83 @@ analyzeSeparation <- function(data, tol1=1e-3, tol2=1e-09) {
   y <- as.integer(data$Response) - 1
   if(length(unique(y)) != 2) stop("expecting binary response.")
 
-  # every pair of indices is looked at
-  indices <- t(combn(1:ncol(x), 2))
-  two.dim <- unlist(alply(indices, 1, function(ind) {
-    return(separation(x[,ind], y, tol1, "test"))
-  }, .progress=getOption("singleCellFeatures.progressBars")))
-  crashed <- two.dim < 0
-  if(sum(crashed) > 0) {
-    message("a total of ", sum(crashed), " errors were encountered")
-    if(sum(crashed) < 10000) {
-      a_ply(indices[crashed,], 1, function(row, names) {
-        message("  ", names[row[1]], "\n    & ", names[row[2]])
-      }, colnames(x))
-    } else message("  not printing that much...")
-  }
-  separated <- two.dim == 1
-  if(sum(separated) > 0) {
-    message("a total of ", sum(separated), " pairs with linear 2D (quasi-)",
-            "separation were found")
-    if(sum(separated) < 10000) {
-      if(sum(separated) == 1) {
-        row <- indices[separated,]
-        message("  ", colnames(x)[row[1]], "\n    & ", colnames(x)[row[2]])
+  if(max.dim >= 2) {
+    dims <- 2:min(ncol(x), max.dim)
+    n.dim <- lapply(dims, function(n.dim) {
+      # every unordered n-tuple of indices is looked at
+      if(choose(ncol(x), n.dim) > 2.5e5) {
+        message("skipping ", n.dim, " dim step du to large number of ",
+                "combinations (", choose(ncol(x), n.dim), ")")
+        return(NULL)
       } else {
-        a_ply(indices[separated,], 1, function(row, names) {
-          message("  ", names[row[1]], "\n    & ", names[row[2]])
-        }, colnames(x))
-        
-        counts <- sort(table(indices[separated]), decreasing=TRUE)
-        names  <- colnames(x)[as.integer(names(counts))]
-        width  <- max(nchar(names))
-        output <- paste(stri_pad_right(names, width),
-                        format(counts), sep="  ")
-        message("in summary, the feature x occurs n times:")
-        l_ply(output, function(str) message("  ", str))
+        indices <- t(combn(1:ncol(x), n.dim))
+        res <- unlist(alply(indices, 1, function(ind) {
+          return(separation(x[,ind], y, tol1, "test"))
+        }, .progress=getOption("singleCellFeatures.progressBars")))
+        crashed <- res < 0
+        if(sum(crashed) > 0) {
+          message("a total of ", sum(crashed), " errors were encountered")
+          if(sum(crashed) < 10000) {
+            a_ply(indices[crashed,], 1, function(row, names) {
+              message("  ", names[row[1]], "\n    & ", names[row[2]])
+            }, colnames(x))
+          } else message("  not printing that much...")
+        }
+        separated <- res == 1
+        if(sum(separated) > 0) {
+          message("a total of ", sum(separated), " pairs with linear 2D ",
+                  "(quasi-)separation were found")
+          if(sum(separated) < 10000) {
+            if(sum(separated) == 1) {
+              row <- indices[separated,]
+              message("  ", paste0(colnames(x)[row], collapse="\n    & "))
+            } else {
+              a_ply(indices[separated,], 1, function(row, names) {
+                message("  ", paste0(colnames(x)[row], collapse="\n    & "))
+              }, colnames(x))
+              
+              counts <- sort(table(indices[separated]), decreasing=TRUE)
+              names  <- colnames(x)[as.integer(names(counts))]
+              width  <- max(nchar(names))
+              output <- paste(stri_pad_right(names, width),
+                              format(counts), sep="  ")
+              message("in summary, the feature x occurs n times:")
+              l_ply(output, function(str) message("  ", str))
+            }
+          } else message("  not printing that much...")
+        }
+        res <- cbind(res, indices)
+        colnames(res) <- c("separated", paste0("feat.", 1:n.dim))
+        return(res)
       }
-    } else message("  not printing that much...")
+    })
+    names(n.dim) <- paste0(dims, ".dim")
+  } else {
+    n.dim <- NULL
   }
-  two.dim <- cbind(two.dim, indices)
-  colnames(two.dim) <- c("separated", "feat.i", "feat.j")
 
-  all.dim <- separation(x, y, tol1)
+  if(all.dim) {
+    all.res <- separation(x, y, tol1)
 
-  if(all.dim$separation) {
-    message("a separating hyperplane has been detected.")
-    if(sum(abs(all.dim$beta) > tol2) > 0) {
-      beta.sort <- all.dim$beta[order(abs(all.dim$beta))]
-      sep.terms <- names(beta.sort)[abs(beta.sort) > tol2]
-      sep.betas <- beta.sort[abs(beta.sort) > tol2]
-      colwidth  <- max(nchar(sep.terms))
-      output <- paste(stri_pad_right(sep.terms, colwidth),
-                      format(sep.betas, digits=5), sep="  ")
-      message("The following ", length(sep.terms), " (of ", ncol(data) - 1,
-              ") terms are involved:")
-      l_ply(output, function(string) message("  ", string))
+    if(all.res$separation) {
+      message("a separating hyperplane has been detected.")
+      if(sum(abs(all.res$beta) > tol2) > 0) {
+        beta.keep <- all.res$beta[abs(all.res$beta) < 1 - tol2]
+        beta.sort <- beta.keep[order(abs(beta.keep))]
+        sep.terms <- names(beta.sort)[abs(beta.sort) > tol2]
+        sep.betas <- beta.sort[abs(beta.sort) > tol2]
+        colwidth  <- max(nchar(sep.terms))
+        output <- paste(stri_pad_right(sep.terms, colwidth),
+                        format(sep.betas, digits=5), sep="  ")
+        message("All ", length(all.res$beta), " features are involved (of ",
+                ncol(data) - 1, ") and the following ", length(sep.terms),
+                "\n  terms have abs(.) < ", 1 - tol2, ":")
+        l_ply(output, function(string) message("  ", string))
+      }
     }
+  } else {
+    all.res <- NULL
   }
 
-  return(list(one=one.dim, two=two.dim, all=all.dim))
+  return(c(list(one=one.dim), n.dim, list(all=all.res)))
 }
