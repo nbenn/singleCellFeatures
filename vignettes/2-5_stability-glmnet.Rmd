@@ -1,0 +1,136 @@
+---
+title: "2.5 Stability analysis using glmnet"
+author: "Nicolas Bennett"
+date: "`r Sys.Date()`"
+output:
+  rmarkdown::pdf_document:
+    includes:
+      in_header: 0_header.tex 
+vignette: >
+  %\VignetteIndexEntry{2.5 Stability analysis using glmnet}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r, setup, echo=FALSE}
+suppressPackageStartupMessages(library(knitr))
+suppressPackageStartupMessages(library(singleCellFeatures))
+suppressPackageStartupMessages(library(xtable))
+options(scipen=1, digits=2, singleCellFeatures.progressBars="none")
+opts_chunk$set(cache.extra = rand_seed)
+```
+
+```{r, loadData-mtor, cache=TRUE, collapse=TRUE}
+suppressPackageStartupMessages(library(singleCellFeatures))
+suppressPackageStartupMessages(library(xtable))
+mtor <- findWells(contents="MTOR", experiment="brucella-du-k[12]")
+scra <- findWells(well.names="H2", plates=sapply(mtor, getBarcode))
+
+data1 <- unlist(getSingleCellData(c(mtor, scra)), recursive=FALSE)
+data1 <- lapply(data1, cleanData, "lower")
+data1 <- makeFeatureCompatible(data1)
+reps  <- 100
+
+```
+
+To find out if good predition/data separation is only given in special situations or occurs readily, stability analysis using glmnet is performed on the *MTOR* (H6)/*SCRAMBLED* (H2) pair and on several randomly selected well pairs on the same plates.
+
+First, wells containing siRNA for the gene *MTOR* are searched for within the kinome-wide Dharmacon unpooled screens (replicates 1 and 2). Then on the plates containing those wells, scrambled control experiments are looked up (in well H2). The data for the resulting 16 wells is loaded, cleaned up (lower 5% quantile in terms of well-level cell counts is discarded) and melted into data frames.
+
+```{r, stability-mtor, cache=TRUE, collapse=TRUE, warning=FALSE}
+mtor.h2.si <- lapply(lapply(mtor, getBarcode), function(bc, data1, n) {
+  glmBootstrapStability(data1[[paste0(bc, ".H2")]], data1[[paste0(bc, ".H6")]],
+                        n.rep=n, normalize=FALSE, alpha=0.5)
+}, data1, reps)
+
+mtor.h2.k1 <- glmBootstrapStability(data1[grep("-2C.H2$", names(data1))],
+                                    data1[grep("-2C.H6$", names(data1))],
+                                    n.rep=reps, normalize=FALSE, alpha=0.5)
+mtor.h2.k2 <- glmBootstrapStability(data1[grep("-2D.H2$", names(data1))],
+                                    data1[grep("-2D.H6$", names(data1))],
+                                    n.rep=reps, normalize=FALSE, alpha=0.5)
+
+mtor.h2.al <- glmBootstrapStability(data1[grep(".H2$", names(data1))],
+                                    data1[grep(".H6$", names(data1))],
+                                    n.rep=reps, normalize=FALSE, alpha=0.5)
+
+```
+
+\newpage
+\blandscape
+
+```{r, table-mtor, results="asis", warning=FALSE, echo=FALSE}
+table1 <- Reduce(function(x, y) {
+  res <- merge(x, y, all=TRUE, by=0)
+  rownames(res) <- res$Row.names
+  res$Row.names <- NULL
+  return(res)
+}, c(mtor.h2.si, list(mtor.h2.k1, mtor.h2.k2, mtor.h2.al)), accumulate=FALSE)
+
+colnames(table1) <- c(sapply(mtor, getBarcode), "K1", "K2",
+                            "DU")
+table1[is.na(table1)] <- 0
+
+table1$sums <- rowSums(table1)
+table1 <- table1[order(table1$sums, decreasing=TRUE),]
+print(xtable(head(table1, n=50), digits=0), size="footnotesize", comment=FALSE)
+
+```
+
+\elandscape
+\newpage
+
+Stability analysis on *MTOR* (Well H6) versus *SCRAMBLED* (Well H2) is performed with 100 resampling iterations, each run on 70% of the data. The top 20 coefficients of each iteration are selected and their frequencies are tabulated. K1 consists of merged \*-2C wells, K2 corresponds to \*-2D and DU encompasses all 8 well pairs. Models were fit with glmnet, and default parameters (elastic net penalty: $$\alpha = 0.5$$).
+
+```{r, loadData-rand, cache=TRUE, collapse=TRUE}
+barcodes <- sapply(findWells(contents="MTOR", experiment="brucella-du-k[12]"),
+                   getBarcode)
+set.seed(9)
+wells <- sapply(barcodes, function(bc) {
+  loc <- paste0(sample(LETTERS[1:16], 2), sample(1:24, 2))
+  findWells(plates=bc, well.names=loc)
+})
+
+data2  <- unlist(getSingleCellData(wells), recursive=FALSE)
+data2  <- lapply(data2, cleanData, "lower")
+data2  <- makeFeatureCompatible(data2)
+
+```
+
+For each plate holding an *MTOR* well, a randomly selected pari of wells is loaded and prepared for analysis. This yields comparisons between control well pairs, siRNA well pairs and control/siRNA well pairs. 
+
+```{r, stability-rand, cache=TRUE, collapse=TRUE, warning=FALSE}
+random.si <- lapply(barcodes, function(bc, data, n) {
+  plate <- grep(bc, names(data))
+  glmBootstrapStability(data[[plate[1]]], data[[plate[2]]],
+                        n.rep=n, normalize=FALSE, alpha=0.5)
+}, data2, reps)
+
+```
+
+\newpage
+\blandscape
+
+```{r, table-rand, results="asis", warning=FALSE, echo=FALSE}
+table2 <- Reduce(function(x, y) {
+  res <- merge(x, y, all=TRUE, by=0)
+  rownames(res) <- res$Row.names
+  res$Row.names <- NULL
+  return(res)
+}, random.si, accumulate=FALSE)
+
+colnames(table2) <- barcodes
+table2[is.na(table2)] <- 0
+
+table2$sums <- rowSums(table2)
+table2 <- table2[order(table2$sums, decreasing=TRUE),]
+print(xtable(head(table2, n=50), digits=0), size="footnotesize", comment=FALSE)
+
+```
+
+\elandscape
+\newpage
+
+The randomply selected well pairs are `r paste0(unlist(lapply(wells, getWellName))[seq(from=1, by=2, length.out=8)], "/", unlist(lapply(wells, getWellName))[seq(from=2, by=2, length.out=8)], " (", barcodes, ")", collapse=", ")`. Bootstrapping is done with 100 resampling iterations, each run on 70% of the data. The top 20 coefficients of each iteration are selected and their frequencies are tabulated. Models are fit with glmnet, and default parameters (elastic net penalty: $$\alpha = 0.5$$).
+
+The randomply generated table compares well to the *MTOR* table and the dominance of intensity features is striking. This suggests, some kind of normalisazion to be required for sensible model fits.

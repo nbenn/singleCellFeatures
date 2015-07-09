@@ -1,10 +1,10 @@
 ---
-title: "2.2 Perfect separation (Brucella/Salmonella)"
+title: "2.2 Perfect separation (run glm)"
 author: "Nicolas Bennett"
 date: "`r Sys.Date()`"
 output: rmarkdown::pdf_document
 vignette: >
-  %\VignetteIndexEntry{2.2 Perfect separation (Brucella/Salmonella)}
+  %\VignetteIndexEntry{2.2 Perfect separation (run glm)}
   %\VignetteEngine{knitr::rmarkdown}
   %\VignetteEncoding{UTF-8}
 ---
@@ -145,10 +145,10 @@ The issue of perfect separation of previous experiments goes away for brucella b
 
 ```{r, glm3, cache=TRUE, collapse=TRUE}
 dat3.bruc <- suppressMessages(makeRankFull(prepareDataforGlm(
-  h7[["J101-2C"]]$data$mat$Cells, h2[["J101-2C"]]$data$mat$Cells)
+  h7[["J104-2C"]]$data$mat$Cells, h2[["J104-2C"]]$data$mat$Cells)
 ))
 dat3.salm <- suppressMessages(makeRankFull(prepareDataforGlm(
-  h7[["J101-2L"]]$data$mat$Cells, h2[["J101-2L"]]$data$mat$Cells)
+  h7[["J104-2L"]]$data$mat$Cells, h2[["J104-2L"]]$data$mat$Cells)
 ))
 glm311 <- glmRegular(dat3.bruc)
 glm312 <- glmGlmnet(dat3.bruc)
@@ -173,10 +173,12 @@ The issue of perfect separation of previous experiments goes away for brucella b
 ```{r, glm4, cache=TRUE, collapse=TRUE}
 dat4.bruc <- suppressMessages(makeRankFull(prepareDataforGlm(
   do.call(rbind, lapply(h7, function(x) {
-    if(getPathogen(x$meta) == "Brucella") return(x$data$mat$Cells) else return(NULL)
+    if(getPathogen(x$meta) == "Brucella") return(x$data$mat$Cells)
+    else return(NULL)
   })),
   do.call(rbind, lapply(h2, function(x) {
-    if(getPathogen(x$meta) == "Brucella") return(x$data$mat$Cells) else return(NULL)
+    if(getPathogen(x$meta) == "Brucella") return(x$data$mat$Cells)
+    else return(NULL)
   })))
 ))
 dat4.salm <- suppressMessages(makeRankFull(prepareDataforGlm(
