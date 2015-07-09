@@ -11,6 +11,9 @@
 #' @param frac.sample Size of the subsample as fraction of all available data.
 #' @param seed        Seed for reproducible sampling.
 #' @param glm.fun     The glm function to use.
+#' @param normalize   Whether to normalize the data (consist of discarding 
+#'                    separating variables and scaling intensity features to
+#'                    [0,1])
 #' @param n.cores     The number of cores to use for bootstrapping.
 #' @param ...         Further arguments to be passed to the glm function. For
 #'                    example using glmnet, the alpha value.
@@ -29,11 +32,16 @@
 #' @export
 glmBootstrapStability <- function(well.a, well.b, n.rep=100, n.hit=20,
                                   frac.sample=0.7, seed=7, glm.fun="glmnet",
-                                  n.cores=detectCores(), ...) {
+                                  normalize=TRUE, n.cores=detectCores(), ...) {
   if(any(class(well.a) == "WellData") & any(class(well.b) == "WellData")) {
     data.a <- meltData(well.a)
     data.b <- meltData(well.b)
-    data   <- prepareDataforGlm(data.a$mat$Cells, data.b$mat$Cells, test=NULL)
+    if(normalize) {
+      data <- prepareDataforGlm(data.a$mat$Cells, data.b$mat$Cells,
+                                drop.sep=TRUE, scale="intensity", test=NULL)
+    } else {
+      data <- prepareDataforGlm(data.a$mat$Cells, data.b$mat$Cells, test=NULL)
+    }
   } else {
     if(class(well.a) == "list" & class(well.b) == "list") {
       class.a <- sapply(well.a, function(x) any(class(x) == "WellData"))
@@ -48,7 +56,12 @@ glmBootstrapStability <- function(well.a, well.b, n.rep=100, n.hit=20,
       data.b <- do.call(rbind, lapply(well.b, function(x) {
         meltData(x)$mat$Cells
       }))
-      data   <- prepareDataforGlm(data.a, data.b, test=NULL)
+      if(normalize) {
+        data <- prepareDataforGlm(data.a, data.b, drop.sep=TRUE,
+                                  scale="intensity", test=NULL)
+      } else {
+        data <- prepareDataforGlm(data.a, data.b, test=NULL)
+      }
     } else {
       stop("expexing lists or WellData objects for well.a/well.b")
     }

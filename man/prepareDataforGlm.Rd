@@ -4,17 +4,22 @@
 \alias{prepareDataforGlm}
 \title{Prepare a dataset for GLM analysis}
 \usage{
-prepareDataforGlm(active, control, drop = NULL, test = 10)
+prepareDataforGlm(active, control, drop.feat = NULL, drop.sep = FALSE,
+  scale = "none", test = 10)
 }
 \arguments{
 \item{active}{Data coming from a well where a gene knockdown occurred.}
 
 \item{control}{Data belonging to a control well.}
 
-\item{drop}{A vector of strings of column names that will be dropped.}
+\item{drop.feat}{A vector of strings of column names that will be dropped.}
+
+\item{drop.sep}{Drop variables that separate data.}
+
+\item{scale}{Scale all matched features to the unit interval.}
 
 \item{test}{The fraction of rows to be used for testing is 1/test. If
-               NULL is supplied, all data is used for training.}
+                 NULL is supplied, all data is used for training.}
 }
 \value{
 A list with entries "test" and "train" each holding a data frame

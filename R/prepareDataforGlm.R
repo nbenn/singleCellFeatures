@@ -6,11 +6,13 @@
 #' into 90% training and 10% testing. To avoid missingness problems, all
 #' variables containing NA/NaN are dropped.
 #'
-#' @param active  Data coming from a well where a gene knockdown occurred.
-#' @param control Data belonging to a control well.
-#' @param drop    A vector of strings of column names that will be dropped.
-#' @param test    The fraction of rows to be used for testing is 1/test. If
-#'                NULL is supplied, all data is used for training.
+#' @param active    Data coming from a well where a gene knockdown occurred.
+#' @param control   Data belonging to a control well.
+#' @param drop.feat A vector of strings of column names that will be dropped.
+#' @param drop.sep  Drop variables that separate data. 
+#' @param scale     Scale all matched features to the unit interval.
+#' @param test      The fraction of rows to be used for testing is 1/test. If
+#'                  NULL is supplied, all data is used for training.
 #'
 #' @return A list with entries "test" and "train" each holding a data frame
 #'         containing a design matrix and a response vector.
@@ -31,7 +33,8 @@
 #' model <- glm("Response ~ .", binomial, data$train)
 #' 
 #' @export
-prepareDataforGlm <- function(active, control, drop=NULL, test=10) {
+prepareDataforGlm <- function(active, control, drop.feat=NULL,
+                              drop.sep=FALSE, scale="none", test=10) {
 
   if(!(is.data.frame(active) & is.data.frame(control))) {
     stop("expecting data frames as aguments active and control.")
@@ -44,8 +47,8 @@ prepareDataforGlm <- function(active, control, drop=NULL, test=10) {
 
   data.all <- rbind(active, control)
 
-  drop <- c(drop, "Image.Index", "Well.Index", "Well.Name", "Plate.Barcode")
-  data.all <- data.all[, !names(data.all) %in% drop]
+  drop.feat <- c(drop.feat, "Image.Index", "Well.Index", "Well.Name", "Plate.Barcode")
+  data.all <- data.all[, !names(data.all) %in% drop.feat]
 
   complete <- complete.cases(t(data.all))
   if(sum(!complete) > 0) {
@@ -54,15 +57,39 @@ prepareDataforGlm <- function(active, control, drop=NULL, test=10) {
     data.all <- data.all[, complete]
     warning("removed ", sum(!complete), " variables containing Na/NaN.")
   }
+
+  if(drop.sep) {
+    drop       <- suppressMessages(analyzeSeparation(data.all, max.dim=1,
+                                                     all.dim=FALSE))
+    drop.names <- rownames(drop$single)[drop$single[,1] <= 0]
+    if(length(drop.names) > 0) {
+      message("dropping separating variables (", length(drop.names), " vars):")
+      l_ply(drop.names, function(x) message("  ", x))
+      data.all   <- data.all[, !names(data.all) %in% drop.names]
+    }
+  }
+  if(scale != "none") {
+    scale.ind <- grepl(scale, names(data.all), ignore.case=TRUE)
+    if(length(scale.ind) > 0) {
+      message("scale to unit interval (", length(scale.ind), " features):")
+      l_ply(names(data.all[scale.ind]), function(x) message("  ", x))
+      feat.scal <- apply(data.all[,scale.ind], 2, function(x) {
+        return((x - min(x, na.rm=TRUE)) / diff(range(x, na.rm=TRUE)))
+      })
+      data.all <- cbind(data.all[,!scale.ind], data.frame(feat.scal))
+      data.all <- data.all[,order(names(data.all))]
+    }
+  }
+
   if(!is.null(test)) {
     if(!is.numeric(test)) stop("expecting a numeric agrument for test.")
     set.seed(7)
     test.ind <- sort(sample.int(nrow(data.all), nrow(data.all) / test))
     testing <- data.all[test.ind,]
     trainin <- data.all[-test.ind,]
-    return(list(test=testing, train=trainin))
+    res <- list(test=testing, train=trainin)
   } else {
-    return(list(test=NULL, train=data.all))
+    res <- list(test=NULL, train=data.all)
   }
 }
 
@@ -311,8 +338,6 @@ analyzeSeparation <- function(data, max.dim=2, all.dim=TRUE,
   }
   if(max.dim < 1) stop("max.dim expected to be >= 1")
 
-  # ensure full rank for data; is required for the simplex step
-  data <- makeRankFull(data)
   # first check each coordinate individually
   one.dim <- apply(data[, !names(data) %in% "Response"], 2, function(col, y) {
     acti <- col[y == "active"]
@@ -335,12 +360,13 @@ analyzeSeparation <- function(data, max.dim=2, all.dim=TRUE,
       shared.act <- sum(acti == sorted[2]) / length(acti)
       shared.ctr <- sum(ctrl == sorted[2]) / length(ctrl)
     } else {
-      # positive overlap as acutall yoverlapping
+      # positive overlap as acutally overlapping
       overlap <- sorted[3] - sorted[2]
       shared.act <- sum(acti >= sorted[2] & acti <= sorted[3]) / length(acti)
       shared.ctr <- sum(ctrl >= sorted[2] & ctrl <= sorted[3]) / length(ctrl)
     }
-    coverag <- overlap / (max(col) - min(col))
+    if((max(col) - min(col)) == 0) coverag <- 0
+    else coverag <- overlap / (max(col) - min(col))
     return(c(coverag, shared.act, shared.ctr, min.a, max.a, min.c, max.c))
   }, data$Response)
   one.dim <- as.data.frame(t(one.dim))
@@ -394,16 +420,20 @@ analyzeSeparation <- function(data, max.dim=2, all.dim=TRUE,
     }
   }
 
-  if(sum(one.dim$coverage <= 0) > 0) {
-    remove <- colnames(data)[one.dim$coverage <= 0]
-    message("removing features from analysis:\n  ",
-            paste(remove, collapse="\n  "))
-    data <- data[, !colnames(data) %in% remove]
-  }
+  if(max.dim >= 2 | all.dim) {
+    # onl needed for further analysis
+    if(sum(one.dim$coverage <= 0) > 0) {
+      remove <- colnames(data)[one.dim$coverage <= 0]
+      message("removing features from analysis:\n  ",
+              paste(remove, collapse="\n  "))
+      data <- data[, !colnames(data) %in% remove]
+    }
 
-  x <- as.matrix(data[, !colnames(data) %in% "Response"])
-  y <- as.integer(data$Response) - 1
-  if(length(unique(y)) != 2) stop("expecting binary response.")
+    data <- makeRankFull(data)
+    x <- as.matrix(data[, !colnames(data) %in% "Response"])
+    y <- as.integer(data$Response) - 1
+    if(length(unique(y)) != 2) stop("expecting binary response.")
+  }
 
   if(max.dim >= 2) {
     dims <- 2:min(ncol(x), max.dim)
@@ -483,5 +513,5 @@ analyzeSeparation <- function(data, max.dim=2, all.dim=TRUE,
     all.res <- NULL
   }
 
-  return(c(list(one=one.dim), n.dim, list(all=all.res)))
+  return(c(list(single=one.dim), n.dim, list(all=all.res)))
 }

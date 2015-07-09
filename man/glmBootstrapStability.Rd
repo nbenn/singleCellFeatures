@@ -5,7 +5,7 @@
 \title{Analyze stability of top n coefficients}
 \usage{
 glmBootstrapStability(well.a, well.b, n.rep = 100, n.hit = 20,
-  frac.sample = 0.7, seed = 7, glm.fun = "glmnet",
+  frac.sample = 0.7, seed = 7, glm.fun = "glmnet", normalize = TRUE,
   n.cores = detectCores(), ...)
 }
 \arguments{
@@ -22,6 +22,10 @@ glmBootstrapStability(well.a, well.b, n.rep = 100, n.hit = 20,
 \item{seed}{Seed for reproducible sampling.}
 
 \item{glm.fun}{The glm function to use.}
+
+\item{normalize}{Whether to normalize the data (consist of discarding
+separating variables and scaling intensity features to
+[0,1])}
 
 \item{n.cores}{The number of cores to use for bootstrapping.}
 
