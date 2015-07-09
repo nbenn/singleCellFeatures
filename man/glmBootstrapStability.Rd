@@ -6,7 +6,7 @@
 \usage{
 glmBootstrapStability(well.a, well.b, n.rep = 100, n.hit = 20,
   frac.sample = 0.7, seed = 7, glm.fun = "glmnet", normalize = TRUE,
-  n.cores = detectCores(), ...)
+  n.cores = getNumCores(), ...)
 }
 \arguments{
 \item{well.a}{A WellData object for glm analysis.}

@@ -15,7 +15,7 @@
 #' saveRDSMC(obj, "~/obj.rds")
 #' 
 #' @export
-saveRDSMC <- function(object, file, threads=detectCores() - 1) {
+saveRDSMC <- function(object, file, threads=getNumCores()) {
   message("using ", threads, " threads for compression.")
   #con <- pipe(paste0("xz -T", threads, " -9 -f > ", file), "wb")
   con <- pipe(paste0("pigz -p ", threads, " -9 -f > ", file), "wb")
@@ -49,4 +49,26 @@ readRDSMC <- function(file) {
     if(exists("con")) close(con)
   })
   return(object)
+}
+
+#' Get the number of available cores
+#' 
+#' In case, the package is used in an LSF environment, detectCores() will
+#' report the number of physical cores insted of the numer allocated by LSF.
+#'
+#' @return The number of available cores.
+#'
+#' @examples
+#' n.cores <- getNumCores()
+
+#' @export
+getNumCores <- function() {
+  n.cores <- as.integer(Sys.getenv("LSB_DJOB_NUMPROC"))
+  if(is.na(n.cores)) {
+    n.cores <- detectCores()
+  }
+  if(n.cores > detectCores() | n.cores < 1) {
+    stop("illegal number of cores (", n.cores, ") specified.")
+  }
+  return(n.cores)
 }

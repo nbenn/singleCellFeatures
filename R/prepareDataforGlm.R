@@ -13,6 +13,7 @@
 #' @param scale     Scale all matched features to the unit interval.
 #' @param test      The fraction of rows to be used for testing is 1/test. If
 #'                  NULL is supplied, all data is used for training.
+#' @param verbose   Whether to list all modified/dropped features
 #'
 #' @return A list with entries "test" and "train" each holding a data frame
 #'         containing a design matrix and a response vector.
@@ -34,7 +35,8 @@
 #' 
 #' @export
 prepareDataforGlm <- function(active, control, drop.feat=NULL,
-                              drop.sep=FALSE, scale="none", test=10) {
+                              drop.sep=FALSE, scale="none", test=10,
+                              verbose=FALSE) {
 
   if(!(is.data.frame(active) & is.data.frame(control))) {
     stop("expecting data frames as aguments active and control.")
@@ -52,8 +54,10 @@ prepareDataforGlm <- function(active, control, drop.feat=NULL,
 
   complete <- complete.cases(t(data.all))
   if(sum(!complete) > 0) {
-    message("found incomplete cases; removing vars:\n  ",
-            paste(names(data.all[!complete]), collapse="\n  "))
+    message("removing ", sum(!complete), " incomplete features")
+    if(verbose) {
+      l_ply(names(data.all[!complete]), function(x) message("  ", x))
+    }
     data.all <- data.all[, complete]
     warning("removed ", sum(!complete), " variables containing Na/NaN.")
   }
@@ -63,16 +67,20 @@ prepareDataforGlm <- function(active, control, drop.feat=NULL,
                                                      all.dim=FALSE))
     drop.names <- rownames(drop$single)[drop$single[,1] <= 0]
     if(length(drop.names) > 0) {
-      message("dropping separating variables (", length(drop.names), " vars):")
-      l_ply(drop.names, function(x) message("  ", x))
+      message("dropping ", length(drop.names), " separating features")
+      if(verbose) {
+        l_ply(drop.names, function(x) message("  ", x))
+      }
       data.all   <- data.all[, !names(data.all) %in% drop.names]
     }
   }
   if(scale != "none") {
     scale.ind <- grepl(scale, names(data.all), ignore.case=TRUE)
     if(length(scale.ind) > 0) {
-      message("scale to unit interval (", length(scale.ind), " features):")
-      l_ply(names(data.all[scale.ind]), function(x) message("  ", x))
+      message("scaling ", length(scale.ind), " features to unit interval")
+      if(verbose) {
+        l_ply(names(data.all[scale.ind]), function(x) message("  ", x))
+      }
       feat.scal <- apply(data.all[,scale.ind], 2, function(x) {
         return((x - min(x, na.rm=TRUE)) / diff(range(x, na.rm=TRUE)))
       })

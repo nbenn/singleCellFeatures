@@ -12,8 +12,8 @@ NULL (invisibly). The updated featureDatabase object saved to the
         be reloaded.
 }
 \description{
-In order to update the featureDatabase object, all *.txt files in the folder
-/path/to/meta.dir/FeatureLists are read, processed and the feature
+In order to update the featureDatabase object, all *.txt files in the
+folder /path/to/meta.dir/FeatureLists are read, processed and the feature
 "Cells.Infection_IsInfected" is added. The filenames determine the list slot
 names, so they should be formatted as PATHOGEN-*.txt.
 }

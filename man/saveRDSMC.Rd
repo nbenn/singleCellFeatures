@@ -4,7 +4,7 @@
 \alias{saveRDSMC}
 \title{A wrapper around saveRDS to enable multicore compression}
 \usage{
-saveRDSMC(object, file, threads = detectCores() - 1)
+saveRDSMC(object, file, threads = getNumCores())
 }
 \arguments{
 \item{object}{An object to be saved}

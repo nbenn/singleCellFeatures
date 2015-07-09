@@ -32,7 +32,7 @@
 #' @export
 glmBootstrapStability <- function(well.a, well.b, n.rep=100, n.hit=20,
                                   frac.sample=0.7, seed=7, glm.fun="glmnet",
-                                  normalize=TRUE, n.cores=detectCores(), ...) {
+                                  normalize=TRUE, n.cores=getNumCores(), ...) {
   if(any(class(well.a) == "WellData") & any(class(well.b) == "WellData")) {
     data.a <- meltData(well.a)
     data.b <- meltData(well.b)

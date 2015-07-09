@@ -1,7 +1,7 @@
 #' Update the featureDatabase object
 #' 
-#' In order to update the featureDatabase object, all *.txt files in the folder 
-#' /path/to/meta.dir/FeatureLists are read, processed and the feature
+#' In order to update the featureDatabase object, all *.txt files in the
+#' folder /path/to/meta.dir/FeatureLists are read, processed and the feature
 #' "Cells.Infection_IsInfected" is added. The filenames determine the list slot
 #' names, so they should be formatted as PATHOGEN-*.txt.
 #'
@@ -184,7 +184,7 @@ updateDatabaseWells <- function(pathogens=NULL) {
     }
     files <- files[matches]
   }
-  #registerDoParallel(cores=detectCores())
+  #registerDoParallel(cores=getNumCores())
   #message("found ", length(files), " aggregate files; using ",
   #        getDoParWorkers(), " cores.")
   message("found ", length(files), " aggregate files.")

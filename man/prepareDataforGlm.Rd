@@ -5,7 +5,7 @@
 \title{Prepare a dataset for GLM analysis}
 \usage{
 prepareDataforGlm(active, control, drop.feat = NULL, drop.sep = FALSE,
-  scale = "none", test = 10)
+  scale = "none", test = 10, verbose = FALSE)
 }
 \arguments{
 \item{active}{Data coming from a well where a gene knockdown occurred.}
@@ -19,7 +19,9 @@ prepareDataforGlm(active, control, drop.feat = NULL, drop.sep = FALSE,
 \item{scale}{Scale all matched features to the unit interval.}
 
 \item{test}{The fraction of rows to be used for testing is 1/test. If
-                 NULL is supplied, all data is used for training.}
+NULL is supplied, all data is used for training.}
+
+\item{verbose}{Whether to list all modified/dropped features}
 }
 \value{
 A list with entries "test" and "train" each holding a data frame
