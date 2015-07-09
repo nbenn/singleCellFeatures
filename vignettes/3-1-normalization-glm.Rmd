@@ -1,0 +1,159 @@
+---
+title: "3.1 Data standardization/normalization"
+author: "Nicolas Bennett"
+date: "`r Sys.Date()`"
+output: rmarkdown::pdf_document
+vignette: >
+  %\VignetteIndexEntry{3.1 Data standardization/normalization}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r, setup, echo=FALSE}
+suppressPackageStartupMessages(library(knitr))
+suppressPackageStartupMessages(library(singleCellFeatures))
+options(scipen=1, digits=2, singleCellFeatures.progressBars="none")
+```
+
+The following document investigates different data standardization techniques. Previously it was shown that some sort of normalization is required for fitting sensible models, especially for intensity features.
+
+```{r, loadData, cache=TRUE, collapse=TRUE}
+h6.dat <- WellData(WellLocation("J107-2C", "H", 6))
+h6.cln <- cleanData(h6.dat, "lower")
+h6.mlt <- meltData(h6.cln)
+h2.dat <- WellData(WellLocation("J107-2C", "H", 2))
+h2.cln <- cleanData(h2.dat, "lower")
+h2.mlt <- meltData(h2.cln)
+
+prep <- prepareDataforGlm(h6.mlt$mat$Cells, h2.mlt$mat$Cells, test=NULL)
+data.mint <- prep$train
+
+```
+
+Two wells, *MTOR* and *SCRAMBLED* or plate `r getBarcode(h6.dat)` are loaded, cleaned up, melted and prepared for glm fitting.
+
+```{r, mint-model, cache=TRUE, collapse=TRUE}
+model.mint <- glm("Response ~ .", binomial, data.mint)
+coeff.mint <- model.mint$coefficients
+coeff.mint <- coeff.mint[order(abs(coeff.mint), decreasing=TRUE)]
+head(coeff.mint, n=20)
+
+```
+
+The top 20 coefficients are printed. All are intensity features and coefficient values are extremely high.
+
+```{r, sep-model, cache=TRUE, collapse=TRUE}
+drop <- analyzeSeparation(data.mint, max.dim=1, all.dim=FALSE)
+drop.names <- rownames(drop$single)[drop$single[,1] <= 0]
+if(length(drop.names) > 0) {
+  message("dropping separating variables (", length(drop.names), " vars)")
+  data.drop <- data.mint[, !names(data.mint) %in% drop.names]
+}
+
+model.drop <- glm("Response ~ .", binomial, data.drop)
+coeff.drop <- model.drop$coefficients
+coeff.drop <- coeff.drop[order(abs(coeff.drop), decreasing=TRUE)]
+head(coeff.drop, n=20)
+
+```
+
+All features that separate the data by themselfes are discarded. Only quasi-separation occurs, which mos probably is due to the situation that for one class, all values are zero and for the other class, they range from zero to some nonzero value.
+
+The top coefficients of the sbsequent fit, as well as their magnitudes, however, remains the same.
+
+```{r, scale-model, cache=TRUE, collapse=TRUE}
+ind.intens <- grepl("intensity", names(data.drop), ignore.case=TRUE)
+if(length(ind.intens) > 0) {
+  message("scale to unit interval (", length(ind.intens), " features):")
+  l_ply(names(data.drop[ind.intens]), function(x) message("  ", x))
+  feat.scal <- apply(data.drop[,ind.intens], 2, function(x) {
+    return((x - min(x, na.rm=TRUE)) / diff(range(x, na.rm=TRUE)))
+  })
+  data.scal <- cbind(data.drop[,!ind.intens], data.frame(feat.scal))
+  data.scal <- data.scal[,order(names(data.scal))]
+}
+
+model.scal <- glm("Response ~ .", binomial, data.scal)
+coeff.scal <- model.scal$coefficients
+coeff.scal <- coeff.scal[order(abs(coeff.scal), decreasing=TRUE)]
+head(coeff.scal, n=20)
+
+```
+
+Next, all intensity features are scaled to the unit interval. This has a considerable effect on the top 20 coefficients ot the fit. The top values are tenfold smaller and some non-intensity features are among the top 20. Complete separation within the data still occurs however. 
+
+```{r, range-model, cache=TRUE, collapse=TRUE}
+if(length(ind.intens) > 0) {
+  message("scale to ranges (", length(ind.intens), " features):")
+  feat.rnge <- apply(data.drop[,ind.intens], 2, function(x) {
+    return(x / diff(range(x, na.rm=TRUE)))
+  })
+  data.rnge <- cbind(data.drop[,!ind.intens], data.frame(feat.rnge))
+  data.rnge <- data.rnge[,order(names(data.rnge))]
+}
+
+model.rnge <- glm("Response ~ .", binomial, data.rnge)
+coeff.rnge <- model.rnge$coefficients
+coeff.rnge <- coeff.rnge[order(abs(coeff.rnge), decreasing=TRUE)]
+head(coeff.rnge, n=20)
+
+```
+
+Instead of svaling to the unit interval, intensity features are scaled to their respective range. The effect is very similar to the previous scaling.
+
+```{r, centered-model, cache=TRUE, collapse=TRUE}
+if(length(ind.intens) > 0) {
+  message("center (", length(ind.intens), " features):")
+  feat.cntr <- apply(data.drop[,ind.intens], 2, function(x) {
+    return(x - mean(x))
+  })
+  data.cntr <- cbind(data.drop[,!ind.intens], data.frame(feat.cntr))
+  data.cntr <- data.cntr[,order(names(data.cntr))]
+}
+
+model.cntr <- glm("Response ~ .", binomial, data.cntr)
+coeff.cntr <- model.cntr$coefficients
+coeff.cntr <- coeff.cntr[order(abs(coeff.cntr), decreasing=TRUE)]
+head(coeff.cntr, n=20)
+
+```
+
+Instead of scaling intensity features, they are centered. The resulting fit takes up the undesirable aspects of the first two approaches.
+
+```{r, unitVar-model, cache=TRUE, collapse=TRUE}
+if(length(ind.intens) > 0) {
+  message("normalize variance (", length(ind.intens), " features):")
+  feat.uvar <- apply(data.drop[,ind.intens], 2, function(x) {
+    return(x / sd(x))
+  })
+  data.uvar <- cbind(data.drop[,!ind.intens], data.frame(feat.uvar))
+  data.uvar <- data.uvar[,order(names(data.uvar))]
+}
+
+model.uvar <- glm("Response ~ .", binomial, data.uvar)
+coeff.uvar <- model.uvar$coefficients
+coeff.uvar <- coeff.uvar[order(abs(coeff.uvar), decreasing=TRUE)]
+head(coeff.uvar, n=20)
+
+```
+
+Scaling all intensity features to have unit variance drives the coefficients to new lows. Additionally, no intensity features are among the top 20 candidates.
+
+```{r, zScore-model, cache=TRUE, collapse=TRUE}
+if(length(ind.intens) > 0) {
+  message("z-score (", length(ind.intens), " features):")
+  feat.zsco <- apply(data.drop[,ind.intens], 2, function(x) {
+    return((x - mean(x)) / sd(x))
+  })
+  data.zsco <- cbind(data.drop[,!ind.intens], data.frame(feat.zsco))
+  data.zsco <- data.zsco[,order(names(data.zsco))]
+}
+
+model.zsco <- glm("Response ~ .", binomial, data.zsco)
+coeff.zsco <- model.zsco$coefficients
+coeff.zsco <- coeff.zsco[order(abs(coeff.zsco), decreasing=TRUE)]
+head(coeff.zsco, n=20)
+
+```
+
+Z-scoring (unit variance and centering) makes little difference to only scaling to unit variance. The result again is low coefficients and no intensity features.
