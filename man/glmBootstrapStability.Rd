@@ -5,8 +5,8 @@
 \title{Analyze stability of top n coefficients}
 \usage{
 glmBootstrapStability(well.a, well.b, n.rep = 100, n.hit = 20,
-  frac.sample = 0.7, seed = 7, glm.fun = "glmnet", normalize = TRUE,
-  n.cores = getNumCores(), ...)
+  frac.sample = 0.7, seed = 7, glm.fun = "glmnet", norm.feat = "all",
+  norm.method = "zScore", norm.sep = FALSE, n.cores = getNumCores(), ...)
 }
 \arguments{
 \item{well.a}{A WellData object for glm analysis.}
@@ -23,14 +23,14 @@ glmBootstrapStability(well.a, well.b, n.rep = 100, n.hit = 20,
 
 \item{glm.fun}{The glm function to use.}
 
-\item{normalize}{Whether to normalize the data (consist of discarding
-separating variables and scaling intensity features to
-[0,1])}
-
 \item{n.cores}{The number of cores to use for bootstrapping.}
 
 \item{...}{Further arguments to be passed to the glm function. For
                    example using glmnet, the alpha value.}
+
+\item{normalize}{Whether to normalize the data (consist of discarding
+separating variables and scaling intensity features to
+[0,1])}
 }
 \value{
 A vector of frequencies for features that were among the top n.hit

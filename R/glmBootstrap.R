@@ -32,15 +32,14 @@
 #' @export
 glmBootstrapStability <- function(well.a, well.b, n.rep=100, n.hit=20,
                                   frac.sample=0.7, seed=7, glm.fun="glmnet",
-                                  normalize=TRUE, n.cores=getNumCores(), ...) {
+                                  norm.feat="all", norm.method="zScore",
+                                  norm.sep=FALSE, n.cores=getNumCores(), ...) {
   if(any(class(well.a) == "WellData") & any(class(well.b) == "WellData")) {
     data.a <- meltData(well.a)
     data.b <- meltData(well.b)
-    if(normalize) {
-      data <- prepareDataforGlm(data.a$mat$Cells, data.b$mat$Cells,
-                                drop.sep=TRUE, scale="intensity", test=NULL)
-    } else {
-      data <- prepareDataforGlm(data.a$mat$Cells, data.b$mat$Cells, test=NULL)
+    data <- prepareDataforGlm(data.a$mat$Cells, data.b$mat$Cells, test=NULL)
+    if(norm.method != "none") {
+      data$train <- normalizeData(data$train, norm.feat, norm.method, norm.sep)
     }
   } else {
     if(class(well.a) == "list" & class(well.b) == "list") {
@@ -56,11 +55,10 @@ glmBootstrapStability <- function(well.a, well.b, n.rep=100, n.hit=20,
       data.b <- do.call(rbind, lapply(well.b, function(x) {
         meltData(x)$mat$Cells
       }))
-      if(normalize) {
-        data <- prepareDataforGlm(data.a, data.b, drop.sep=TRUE,
-                                  scale="intensity", test=NULL)
-      } else {
-        data <- prepareDataforGlm(data.a, data.b, test=NULL)
+      data <- prepareDataforGlm(data.a, data.b, test=NULL)
+      if(norm.method != "none") {
+        data$train <- normalizeData(data$train, norm.feat, norm.method,
+                                    norm.sep)
       }
     } else {
       stop("expexing lists or WellData objects for well.a/well.b")
@@ -70,8 +68,6 @@ glmBootstrapStability <- function(well.a, well.b, n.rep=100, n.hit=20,
   if(glm.fun == "glmnet") {
     dat.x <- as.matrix(data$train[,!(names(data$train) %in% "Response")])
     dat.y <- data$train$Response
-  } else {
-    dat <- makeRankFull(data$train)
   }
 
   registerDoParallel(cores=n.cores)
@@ -88,7 +84,7 @@ glmBootstrapStability <- function(well.a, well.b, n.rep=100, n.hit=20,
     res <- foreach(i=1:n.rep, .combine=cbind) %dopar% {
       set.seed(i + seed)
       sample <- sample.int(nrow(dat), nrow(dat) * frac.sample)
-      subset <- makeRankFull(dat[sample,])
+      subset <- dat[sample,]
       full  <- do.call("glm", list("Response ~ .", family=binomial,
                                    data=subset))
       empty <- do.call("glm", list("Response ~ 1", family=binomial,
@@ -104,7 +100,7 @@ glmBootstrapStability <- function(well.a, well.b, n.rep=100, n.hit=20,
     res <- foreach(i=1:n.rep, .combine=cbind) %dopar% {
       set.seed(i + seed)
       sample <- sample.int(nrow(dat), nrow(dat) * frac.sample)
-      subset <- makeRankFull(dat[sample,])
+      subset <- dat[sample,]
       fun <- match.fun(glm.fun)
       model <- fun("Response ~ .", binomial, subset, ...)
       coeff <- model$coefficients

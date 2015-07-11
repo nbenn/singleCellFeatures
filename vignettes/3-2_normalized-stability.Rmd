@@ -41,20 +41,22 @@ First, wells containing siRNA for the gene *MTOR* are searched for within the ki
 mtor.si <- lapply(lapply(mtor, getBarcode), function(bc, data.mtor, n) {
   glmBootstrapStability(data.mtor[[paste0(bc, ".H2")]],
                         data.mtor[[paste0(bc, ".H6")]],
-                        n.rep=n, normalize=TRUE, alpha=0.5)
+                        n.rep=n, norm.feat="intensity",
+                        norm.method="unitInterval", alpha=0.5)
 }, data.mtor, reps)
 
 mtor.k1 <- glmBootstrapStability(
   data.mtor[grep("-2C.H2$", names(data.mtor))],
   data.mtor[grep("-2C.H6$", names(data.mtor))],
-  n.rep=reps, normalize=TRUE, alpha=0.5)
+  n.rep=reps, norm.feat="intensity", norm.method="unitInterval", alpha=0.5)
 mtor.k2 <- glmBootstrapStability(
   data.mtor[grep("-2D.H2$", names(data.mtor))],
   data.mtor[grep("-2D.H6$", names(data.mtor))],
-  n.rep=reps, normalize=TRUE, alpha=0.5)
+  n.rep=reps, norm.feat="intensity", norm.method="unitInterval", alpha=0.5)
 mtor.al <- glmBootstrapStability(data.mtor[grep(".H2$", names(data.mtor))],
                                  data.mtor[grep(".H6$", names(data.mtor))],
-                                 n.rep=reps, normalize=TRUE, alpha=0.5)
+                                 n.rep=reps, norm.feat="intensity",
+                                 norm.method="unitInterval", alpha=0.5)
 
 ```
 
@@ -105,7 +107,8 @@ For each plate holding an *MTOR* well, a randomly selected pair of wells is load
 rand.si <- lapply(barcodes, function(bc, data, n) {
   plate <- grep(bc, names(data))
   glmBootstrapStability(data[[plate[1]]], data[[plate[2]]],
-                        n.rep=n, normalize=TRUE, alpha=0.5)
+                        n.rep=n, norm.feat="intensity",
+                        norm.method="unitInterval", alpha=0.5)
 }, data.rand, reps)
 
 ```

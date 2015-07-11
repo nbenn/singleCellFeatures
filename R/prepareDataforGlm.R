@@ -10,7 +10,6 @@
 #' @param control   Data belonging to a control well.
 #' @param drop.feat A vector of strings of column names that will be dropped.
 #' @param drop.sep  Drop variables that separate data. 
-#' @param scale     Scale all matched features to the unit interval.
 #' @param test      The fraction of rows to be used for testing is 1/test. If
 #'                  NULL is supplied, all data is used for training.
 #' @param verbose   Whether to list all modified/dropped features
@@ -35,8 +34,7 @@
 #' 
 #' @export
 prepareDataforGlm <- function(active, control, drop.feat=NULL,
-                              drop.sep=FALSE, scale="none", test=10,
-                              verbose=FALSE) {
+                              drop.sep=FALSE, test=10, verbose=FALSE) {
 
   if(!(is.data.frame(active) & is.data.frame(control))) {
     stop("expecting data frames as aguments active and control.")
@@ -74,20 +72,6 @@ prepareDataforGlm <- function(active, control, drop.feat=NULL,
       data.all   <- data.all[, !names(data.all) %in% drop.names]
     }
   }
-  if(scale != "none") {
-    scale.ind <- grepl(scale, names(data.all), ignore.case=TRUE)
-    if(length(scale.ind) > 0) {
-      message("scaling ", length(scale.ind), " features to unit interval")
-      if(verbose) {
-        l_ply(names(data.all[scale.ind]), function(x) message("  ", x))
-      }
-      feat.scal <- apply(data.all[,scale.ind], 2, function(x) {
-        return((x - min(x, na.rm=TRUE)) / diff(range(x, na.rm=TRUE)))
-      })
-      data.all <- cbind(data.all[,!scale.ind], data.frame(feat.scal))
-      data.all <- data.all[,order(names(data.all))]
-    }
-  }
 
   if(!is.null(test)) {
     if(!is.numeric(test)) stop("expecting a numeric agrument for test.")
@@ -99,6 +83,94 @@ prepareDataforGlm <- function(active, control, drop.feat=NULL,
   } else {
     res <- list(test=NULL, train=data.all)
   }
+}
+
+#' Normalize data
+#' 
+#' Given two well level matrices combined by prepareDataforGlm, normalize the
+#' data.
+#'
+#' @param data           The data frame holding the data to be normalized.
+#' @param features       A regular expression specifying the features to be
+#'                       normalized. The string "all" includes all available.
+#' @param method         A string specifying the normalization method to be
+#'                       used. The following are implemented: unitInterval,
+#'                       scaleRange, center, unitVar, zScore.
+#' @param separate.wells Are the two wells to be treated seperately or
+#'                       concurrently?
+#'
+#' @return A data.frame holding normalized data.
+#'
+#' @examples
+#' wells     <- findWells(plates="J107-2C", well.names=c("H2", "H6"))
+#' data      <- unlist(getSingleCellData(wells), recursive=FALSE)
+#' cleaned   <- lapply(data, cleanData, "lower")
+#' melted    <- lapply(cleaned, meltData)
+#' data.mint <- prepareDataforGlm(melted[[2]]$mat$Cells, 
+#'                                melted[[1]]$mat$Cells, test=NULL)$train
+#' data.scal <- normalizeData(data.mint, features="intensity",
+#'                            method="unitInterval")
+#' 
+#' @export
+normalizeData <- function(data, features="all", method="zScore",
+                          separate.wells=FALSE) {
+
+  unitInterval <- function(x) {
+    return((x - min(x)) / diff(range(x)))
+  }
+  scaleRange <- function(x) {
+    return(x / diff(range(x)))
+  }
+  center <- function(x) {
+    return(x - mean(x))
+  }
+  unitVar <- function(x) {
+    return(x / sd(x))
+  }
+  zScore <- function(x) {
+    return((x - mean(x)) / sd(x))
+  }
+
+  if(!is.data.frame(data)) {
+    stop("expecting a data.frame for data")
+  }
+  if(is.null(data$Response)) {
+    stop("expecting the data.frame to contain a column \"Reslpnse\".")
+  }
+
+  normFun  <- get(method)
+  data.all <- makeRankFull(data)
+  response <- data.all$Response
+  response <- as.numeric(seq_along(response))[response] - 1
+  data.mat <- data.all[,!(names(data.all) %in% "Response")]
+
+  if(features == "all") {
+    message("applying normalization to all ", ncol(data.mat), " features.")
+    if(!separate.wells) {
+      norm.all <- apply(data.mat, 2, normFun)
+    } else {
+      norm.inf <- apply(data.mat[!as.logical(response),], 2, normFun)
+      norm.nin <- apply(data.mat[as.logical(response),], 2, normFun)
+      norm.all <- rbind(norm.inf, norm.nin)
+    }
+    result <- data.frame(cbind(norm.all, response))
+    names(result)[length(result)] <- "Response"
+  } else {
+    indices <- grepl(features, names(data.mat), ignore.case=TRUE)
+    message("applying normalization to selected", length(indices), 
+            " features.")
+    if(!separate.wells) {
+      norm.all <- apply(data.mat[,indices], 2, normFun)
+    } else {
+      norm.inf <- apply(data.mat[!as.logical(response), indices], 2, normFun)
+      norm.nin <- apply(data.mat[as.logical(response), indices], 2, normFun)
+      norm.all <- rbind(norm.inf, norm.nin)
+    }
+    result <- data.frame(cbind(data.mat[,!indices], norm.all, response))
+    names(result)[length(result)] <- "Response"
+    result <- result[,order(names(result))]
+  }
+  return(result)
 }
 
 #' Enforce full rank design matrix
