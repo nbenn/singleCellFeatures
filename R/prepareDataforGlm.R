@@ -279,14 +279,12 @@ compareModeltoTruth <- function(estim, truth) {
 #'
 #' @examples
 #' # get gene locations
-#' wells <- findWells(plates=c("J101-2C", "J107-2D", "J110-2L"),
-#'                    well.names=c("H2", "H6"))
+#' wells <- findWells(plates="J101-2C", well.names=c("H2", "H6"))
 #' data  <- unlist(getSingleCellData(wells), recursive=FALSE)
-#' h21 <- list(meta=data[["J101-2C.H2"]]$meta,
-#'             data=meltData(cleanData(data[["J101-2C.H2"]], "lower")))
-#' h61 <- list(meta=data[["J101-2C.H6"]]$meta,
-#'             data=meltData(cleanData(data[["J101-2C.H6"]], "lower")))
-#' dat1 <- prepareDataforGlm(h61$data$mat$Cells, h21$data$mat$Cells, test=NULL)
+#' cleaned <- lapply(data, cleanData, "lower")
+#' melted <- lapply(cleaned, meltData)
+#' prepared <- prepareDataforGlm(melted[[2]]$mat$Cells,
+#'                           melted[[1]]$mat$Cells, test=NULL)
 #' sep1 <- analyzeSeparation(dat1)
 #'
 #' @export
@@ -389,40 +387,43 @@ analyzeSeparation <- function(data, max.dim=2, all.dim=TRUE,
                          rownames(interesting))))
     if(nrow(completely) > 0) {
       message("for ", nrow(completely), " features, complete separation ",
-              "occurs:\n  ", stri_pad_right("feature", col1), "  covarge ",
-              "shrd.ac shrd.ct\n  ",
-              paste(stri_pad_right(rownames(completely), col1),
-                    formatC(completely$coverage, digits=4, width=6,
+              "occurs:\n  feature                               coverage  ",
+              "shared.active  shared.ctrl\n  ",
+              paste(rownames(completely), "\n                               ",
+                    "     ",
+                    formatC(completely$coverage, digits=6, width=8,
                             format="f"),
-                    formatC(completely$shared.act, digits=4, width=6,
+                    formatC(completely$shared.act, digits=6, width=8,
                             format="f"),
-                    formatC(completely$shared.ctr, digits=4, width=6,
+                    formatC(completely$shared.ctr, digits=6, width=13,
                             format="f"),
                     sep="  ", collapse="\n  "))
     }
     if(nrow(quasi) > 0) {
       message("for ", nrow(quasi), " features, quasi-separation ",
-              "occurs:\n  ", stri_pad_right("feature", col1), "  covarge ",
-              "shrd.ac shrd.ct\n  ",
-              paste(stri_pad_right(rownames(quasi), col1),
-                    formatC(quasi$coverage, digits=4, width=6,
+              "occurs:\n  feature                               coverage  ",
+              "shared.active  shared.ctrl\n  ",
+              paste(rownames(quasi), "\n                               ",
+                    "     ",
+                    formatC(quasi$coverage, digits=6, width=8,
                             format="f"),
-                    formatC(quasi$shared.act, digits=4, width=6,
+                    formatC(quasi$shared.act, digits=6, width=8,
                             format="f"),
-                    formatC(quasi$shared.ctr, digits=4, width=6,
+                    formatC(quasi$shared.ctr, digits=6, width=13,
                             format="f"),
                     sep="  ", collapse="\n  "))
     }
     if(nrow(interesting) > 0) {
       message("for ", nrow(interesting), " features, low coverage ",
-              "occurs:\n  ", stri_pad_right("feature", col1), "  covarge ",
-              "shrd.ac shrd.ct\n  ",
-              paste(stri_pad_right(rownames(interesting), col1),
-                    formatC(interesting$coverage, digits=4, width=6,
+              "occurs:\n  feature                               coverage  ",
+              "shared.active  shared.ctrl\n  ",
+              paste(rownames(interesting), "\n                               ",
+                    "     ",
+                    formatC(interesting$coverage, digits=6, width=8,
                             format="f"),
-                    formatC(interesting$shared.act, digits=4, width=6,
+                    formatC(interesting$shared.act, digits=6, width=8,
                             format="f"),
-                    formatC(interesting$shared.ctr, digits=4, width=6,
+                    formatC(interesting$shared.ctr, digits=6, width=13,
                             format="f"),
                     sep="  ", collapse="\n  "))
     }

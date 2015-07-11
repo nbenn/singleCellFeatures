@@ -110,10 +110,10 @@ rand.si <- lapply(barcodes, function(bc, data, n) {
 
 ```
 
+For each plate holding an *MTOR* well, a randomly selected pari of wells is loaded and prepared for analysis. This yields comparisons between control well pairs, siRNA well pairs and control/siRNA well pairs. 
+
 \newpage
 \blandscape
-
-For each plate holding an *MTOR* well, a randomly selected pari of wells is loaded and prepared for analysis. This yields comparisons between control well pairs, siRNA well pairs and control/siRNA well pairs. 
 
 ```{r, table-rand, results="asis", warning=FALSE, echo=FALSE}
 table2 <- Reduce(function(x, y) {

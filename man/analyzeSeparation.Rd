@@ -34,14 +34,12 @@ the linear program is taken from the package safeBinaryRegression.
 }
 \examples{
 # get gene locations
-wells <- findWells(plates=c("J101-2C", "J107-2D", "J110-2L"),
-                   well.names=c("H2", "H6"))
+wells <- findWells(plates="J101-2C", well.names=c("H2", "H6"))
 data  <- unlist(getSingleCellData(wells), recursive=FALSE)
-h21 <- list(meta=data[["J101-2C.H2"]]$meta,
-            data=meltData(cleanData(data[["J101-2C.H2"]], "lower")))
-h61 <- list(meta=data[["J101-2C.H6"]]$meta,
-            data=meltData(cleanData(data[["J101-2C.H6"]], "lower")))
-dat1 <- prepareDataforGlm(h61$data$mat$Cells, h21$data$mat$Cells, test=NULL)
+cleaned <- lapply(data, cleanData, "lower")
+melted <- lapply(cleaned, meltData)
+prepared <- prepareDataforGlm(melted[[2]]$mat$Cells,
+                          melted[[1]]$mat$Cells, test=NULL)
 sep1 <- analyzeSeparation(dat1)
 }
 

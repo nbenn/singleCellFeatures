@@ -131,6 +131,6 @@ print(xtable(head(table2, n=50), digits=0), size="footnotesize", comment=FALSE)
 \elandscape
 \newpage
 
-The randomply selected well pairs are `r paste0(unlist(lapply(wells, getWellName))[seq(from=1, by=2, length.out=8)], "/", unlist(lapply(wells, getWellName))[seq(from=2, by=2, length.out=8)], " (", barcodes, ")", collapse=", ")`. Bootstrapping is done with 100 resampling iterations, each run on 70% of the data. The top 20 coefficients of each iteration are selected and their frequencies are tabulated. Models are fit with glmnet, and default parameters (elastic net penalty: $$\alpha = 0.5$$).
+The randomply selected well pairs are `r paste0(unlist(lapply(wells, getWellName))[seq(from=1, by=2, length.out=8)], "/", unlist(lapply(wells, getWellName))[seq(from=2, by=2, length.out=8)], " (", barcodes, ")", collapse=", ")`. Bootstrapping is done with 100 resampling iterations, each run on 70% of the data. The top 20 coefficients of each iteration are selected and their frequencies are tabulated. Models are fit with glmnet, and default parameters (elastic net penalty: $\alpha = 0.5$).
 
 The randomply generated table compares well to the *MTOR* table and the dominance of intensity features is striking. This suggests, some kind of normalisazion to be required for sensible model fits.
