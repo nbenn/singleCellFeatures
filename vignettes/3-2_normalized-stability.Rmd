@@ -29,7 +29,7 @@ scra <- findWells(well.names="H2", plates=sapply(mtor, getBarcode))
 data.mtor <- unlist(getSingleCellData(c(mtor, scra)), recursive=FALSE)
 data.mtor <- lapply(data.mtor, cleanData, "lower")
 data.mtor <- makeFeatureCompatible(data.mtor)
-reps  <- 100
+reps  <- 8
 
 ```
 
@@ -42,7 +42,7 @@ mtor.si <- lapply(lapply(mtor, getBarcode), function(bc, data.mtor, n) {
   glmBootstrapStability(data.mtor[[paste0(bc, ".H2")]],
                         data.mtor[[paste0(bc, ".H6")]],
                         n.rep=n, norm.feat="intensity",
-                        norm.method="unitInterval", alpha=0.5)
+                        norm.method="unitInterval", norm.sep=TRUE, alpha=0.5)
 }, data.mtor, reps)
 
 mtor.k1 <- glmBootstrapStability(

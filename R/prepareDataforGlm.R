@@ -47,7 +47,8 @@ prepareDataforGlm <- function(active, control, drop.feat=NULL,
 
   data.all <- rbind(active, control)
 
-  drop.feat <- c(drop.feat, "Image.Index", "Well.Index", "Well.Name", "Plate.Barcode")
+  drop.feat <- c(drop.feat, "Image.Index", "Well.Index", "Well.Name",
+                 "Plate.Barcode")
   data.all <- data.all[, !names(data.all) %in% drop.feat]
 
   complete <- complete.cases(t(data.all))
@@ -139,10 +140,25 @@ normalizeData <- function(data, features="all", method="zScore",
   }
 
   normFun  <- get(method)
-  data.all <- makeRankFull(data)
-  response <- data.all$Response
+  response <- data$Response
   response <- as.numeric(seq_along(response))[response] - 1
-  data.mat <- data.all[,!(names(data.all) %in% "Response")]
+  data.mat <- data[,!(names(data) %in% "Response")]
+
+  if(!separate.wells) {
+    drop <- apply(data.mat, 2, function(x) return(var(x) == 0))
+  } else {
+    drop.inf <- apply(data.mat[!as.logical(response),], 2, function(x) {
+      return(var(x) == 0)
+    })
+    drop.nin <- apply(data.mat[as.logical(response),], 2, function(x) {
+      return(var(x) == 0)
+    })
+    drop <- drop.inf | drop.nin
+  }
+  if(sum(drop) > 0) {
+    message("dropping ", sum(drop), " zero variance features.")
+    data.mat <- data.mat[,!drop]
+  }
 
   if(features == "all") {
     message("applying normalization to all ", ncol(data.mat), " features.")
@@ -157,7 +173,7 @@ normalizeData <- function(data, features="all", method="zScore",
     names(result)[length(result)] <- "Response"
   } else {
     indices <- grepl(features, names(data.mat), ignore.case=TRUE)
-    message("applying normalization to selected", length(indices), 
+    message("applying normalization to selected ", length(indices), 
             " features.")
     if(!separate.wells) {
       norm.all <- apply(data.mat[,indices], 2, normFun)
@@ -202,7 +218,7 @@ normalizeData <- function(data, features="all", method="zScore",
 #' model <- glm("Response ~ .", binomial, data$train)
 #' 
 #' @export
-makeRankFull <- function(data) {
+makeRankFull <- function(data, verbose=FALSE) {
   # input validation
   if(is.list(data)) {
     if(!is.data.frame(data)) {
@@ -226,10 +242,9 @@ makeRankFull <- function(data) {
     col.var <- apply(temp, 2, var)
     remove <- names(which(col.var == 0))
     if(length(remove) > 0) {
-      message("removing zero variance variables:\n  ",
-              paste(remove, collapse="\n  "))
+      message("removing ", length(remove), " zero variance variables.")
+      if(verbose) l_ply(remove, function(x) message("  ", x))
       temp <- temp[, !names(temp) %in% remove]
-      warning("removed ", length(remove), " zero variance variables.")
     }
     new.rank <- qr(temp)$rank
     if(new.rank < ncol(temp)) {
@@ -240,11 +255,10 @@ makeRankFull <- function(data) {
       remo.ind <- unique(pmax(off.diag[,1], off.diag[,2]))
       if(length(remo.ind) > 0) {
         remo.nam <- names(temp)[remo.ind]
-        message("removing one of highly correlated (>0.9999) variable pairs:",
-                "\n  ", paste(remo.nam, collapse="\n  "))
+        message("removing one of ", length(remo.ind), " highly correlated ",
+                "(>0.9999) variable pairs.")
+        if(verbose) l_ply(remo.nam, function(x) message("  ", x))
         temp <- temp[, !names(temp) %in% remo.nam]
-        warning("removed ", length(remo.ind), " variables due to highly ",
-                "correlation (>0.9999) ")
         remove <- c(remove, remo.nam)
       }
     }

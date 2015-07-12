@@ -4,7 +4,7 @@
 \alias{makeRankFull}
 \title{Enforce full rank design matrix}
 \usage{
-makeRankFull(data)
+makeRankFull(data, verbose = FALSE)
 }
 \arguments{
 \item{data}{Matrix/data frame holding the design matrix and optionally a

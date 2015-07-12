@@ -104,7 +104,7 @@ head(coeff.uvar, n=20)
 Scaling all intensity features to have unit variance drives the coefficients to new lows. Additionally, no intensity features are among the top 20 candidates.
 
 ```{r, zScore-model, cache=TRUE, collapse=TRUE}
-data.zsco  <- normalizeData(data.drop, features="all",
+data.zsco  <- normalizeData(data.drop, features="intensity",
                             method="zScore")
 model.zsco <- glm("Response ~ .", binomial, data.zsco)
 coeff.zsco <- model.zsco$coefficients

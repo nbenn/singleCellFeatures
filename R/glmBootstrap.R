@@ -34,6 +34,7 @@ glmBootstrapStability <- function(well.a, well.b, n.rep=100, n.hit=20,
                                   frac.sample=0.7, seed=7, glm.fun="glmnet",
                                   norm.feat="all", norm.method="zScore",
                                   norm.sep=FALSE, n.cores=getNumCores(), ...) {
+
   if(any(class(well.a) == "WellData") & any(class(well.b) == "WellData")) {
     data.a <- meltData(well.a)
     data.b <- meltData(well.b)
