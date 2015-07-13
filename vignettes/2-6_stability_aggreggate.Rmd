@@ -84,7 +84,7 @@ table.all <- Reduce(function(x, y) {
   rownames(res) <- res$Row.names
   res$Row.names <- NULL
   return(res)
-}, list(mtor.all1, mtor.all2, mtor.all3, mtor.all4
+}, list(mtor.all1, mtor.all2, mtor.all3, mtor.all4,
         scra.all1, scra.all2, scra.all3, scra.all4),
 accumulate=FALSE)
 
@@ -150,7 +150,7 @@ table.inf <- Reduce(function(x, y) {
   rownames(res) <- res$Row.names
   res$Row.names <- NULL
   return(res)
-}, list(mtor.inf1, mtor.inf2, mtor.inf3, mtor.inf4
+}, list(mtor.inf1, mtor.inf2, mtor.inf3, mtor.inf4,
         scra.inf1, scra.inf2, scra.inf3, scra.inf4),
 accumulate=FALSE)
 
