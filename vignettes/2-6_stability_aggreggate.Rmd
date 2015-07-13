@@ -1,0 +1,96 @@
+---
+title: "2.5 Glmnet stability analysis (aggreggate)"
+author: "Nicolas Bennett"
+date: "`r Sys.Date()`"
+output:
+  rmarkdown::pdf_document:
+    includes:
+      in_header: 0_header.tex 
+vignette: >
+  %\VignetteIndexEntry{2.5 Glmnet stability analysis (aggreggate)}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r, setup, echo=FALSE}
+suppressPackageStartupMessages(library(knitr))
+suppressPackageStartupMessages(library(singleCellFeatures))
+suppressPackageStartupMessages(library(xtable))
+options(scipen=1, digits=2, singleCellFeatures.progressBars="none")
+opts_chunk$set(cache.extra = rand_seed)
+```
+
+```{r, loadData-mtor, cache=TRUE, collapse=TRUE}
+suppressPackageStartupMessages(library(singleCellFeatures))
+suppressPackageStartupMessages(library(xtable))
+mtor <- findWells(contents="MTOR", experiment="brucella-du-k[12]")
+scra <- findWells(well.names=c("E2", "G23", "H2", "J2"),
+                  plates=sapply(mtor, getBarcode))
+
+data <- unlist(getSingleCellData(c(mtor, scra)), recursive=FALSE)
+data <- lapply(data, cleanData, "lower")
+data <- makeFeatureCompatible(data)
+reps  <- 100
+
+```
+
+To find out if good predition/data separation is only given in special situations or occurs readily, stability analysis using glmnet is performed on the *MTOR* (H6)/*SCRAMBLED* (H2) pair and on several randomly selected well pairs on the same plates.
+
+First, wells containing siRNA for the gene *MTOR* are searched for within the kinome-wide Dharmacon unpooled screens (replicates 1 and 2). Then on the plates containing those wells, scrambled control experiments are looked up (in well H2). The data for the resulting 16 wells is loaded, cleaned up (lower 5% quantile in terms of well-level cell counts is discarded) and melted into data frames.
+
+```{r, stability-mtor, cache=TRUE, collapse=TRUE, warning=FALSE}
+stab.mtor1 <- glmBootstrapStability(data[grep(".E2$", names(data))],
+                                    data[grep(".H6$", names(data))],
+                                    n.rep=reps, norm.method="none", alpha=0.5)
+stab.mtor2 <- glmBootstrapStability(data[grep(".G23$", names(data))],
+                                    data[grep(".H6$", names(data))],
+                                    n.rep=reps, norm.method="none", alpha=0.5)
+stab.mtor3 <- glmBootstrapStability(data[grep(".H2$", names(data))],
+                                    data[grep(".H6$", names(data))],
+                                    n.rep=reps, norm.method="none", alpha=0.5)
+stab.mtor4 <- glmBootstrapStability(data[grep(".J2$", names(data))],
+                                    data[grep(".H6$", names(data))],
+                                    n.rep=reps, norm.method="none", alpha=0.5)
+
+stab.scra1 <- glmBootstrapStability(data[grep(".E2$", names(data))],
+                                    data[grep(".G23$", names(data))],
+                                    n.rep=reps, norm.method="none", alpha=0.5)
+stab.scra2 <- glmBootstrapStability(data[grep(".E2$", names(data))],
+                                    data[grep(".J2$", names(data))],
+                                    n.rep=reps, norm.method="none", alpha=0.5)
+stab.scra3 <- glmBootstrapStability(data[grep(".H2$", names(data))],
+                                    data[grep(".J2$", names(data))],
+                                    n.rep=reps, norm.method="none", alpha=0.5)
+stab.scra4 <- glmBootstrapStability(data[grep(".H2$", names(data))],
+                                    data[grep(".G23$", names(data))],
+                                    n.rep=reps, norm.method="none", alpha=0.5)
+
+```
+
+\newpage
+\blandscape
+
+```{r, table-mtor, results="asis", warning=FALSE, echo=FALSE}
+table <- Reduce(function(x, y) {
+  res <- merge(x, y, all=TRUE, by=0)
+  rownames(res) <- res$Row.names
+  res$Row.names <- NULL
+  return(res)
+}, list(stab.mtor1, stab.mtor2, stab.mtor3, stab.mtor4
+        stab.scra1, stab.scra2, stab.scra3, stab.scra4),
+accumulate=FALSE)
+
+colnames(table) <- c("E2/H6", "G23/H6", "H2/H6", "J2/H6", 
+                      "E2/G23", "E2/J2", "H2/J2", "H2/G23")
+table[is.na(table)] <- 0
+
+table$sums <- rowSums(table)
+table <- table[order(table$sums, decreasing=TRUE),]
+print(xtable(head(table, n=50), digits=0), size="footnotesize", comment=FALSE)
+
+```
+
+\elandscape
+\newpage
+
+Stability analysis on *MTOR* (Well H6) versus *SCRAMBLED* (Well H2) is performed with 100 resampling iterations, each run on 70% of the data. The top 20 coefficients of each iteration are selected and their frequencies are tabulated. K1 consists of merged \*-2C wells, K2 corresponds to \*-2D and DU encompasses all 8 well pairs. Models were fit with glmnet, and default parameters (elastic net penalty: $$\alpha = 0.5$$).

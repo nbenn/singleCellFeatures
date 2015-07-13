@@ -136,7 +136,7 @@ normalizeData <- function(data, features="all", method="zScore",
     stop("expecting a data.frame for data")
   }
   if(is.null(data$Response)) {
-    stop("expecting the data.frame to contain a column \"Reslpnse\".")
+    stop("expecting the data.frame to contain a column \"Response\".")
   }
 
   normFun  <- get(method)
@@ -173,7 +173,7 @@ normalizeData <- function(data, features="all", method="zScore",
     names(result)[length(result)] <- "Response"
   } else {
     indices <- grepl(features, names(data.mat), ignore.case=TRUE)
-    message("applying normalization to selected ", length(indices), 
+    message("applying normalization to selected ", sum(indices), 
             " features.")
     if(!separate.wells) {
       norm.all <- apply(data.mat[,indices], 2, normFun)

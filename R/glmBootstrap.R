@@ -11,9 +11,13 @@
 #' @param frac.sample Size of the subsample as fraction of all available data.
 #' @param seed        Seed for reproducible sampling.
 #' @param glm.fun     The glm function to use.
-#' @param normalize   Whether to normalize the data (consist of discarding 
-#'                    separating variables and scaling intensity features to
-#'                    [0,1])
+#' @param norm.feat   Which features to normalize. Either a regular
+#'                    expression or "all".
+#' @param norm.method How to normalize (see function normalizeData for
+#'                    details). 
+#' @param norm.sep    Separate data into wells form normalization? 
+#' @param select.inf  Run stability analysis only on "infected", "uninfected"
+#'                    or on "all"?
 #' @param n.cores     The number of cores to use for bootstrapping.
 #' @param ...         Further arguments to be passed to the glm function. For
 #'                    example using glmnet, the alpha value.
@@ -33,7 +37,8 @@
 glmBootstrapStability <- function(well.a, well.b, n.rep=100, n.hit=20,
                                   frac.sample=0.7, seed=7, glm.fun="glmnet",
                                   norm.feat="all", norm.method="zScore",
-                                  norm.sep=FALSE, n.cores=getNumCores(), ...) {
+                                  norm.sep=FALSE, select.inf="all",
+                                  n.cores=getNumCores(), ...) {
 
   if(any(class(well.a) == "WellData") & any(class(well.b) == "WellData")) {
     data.a <- meltData(well.a)
@@ -64,6 +69,20 @@ glmBootstrapStability <- function(well.a, well.b, n.rep=100, n.hit=20,
     } else {
       stop("expexing lists or WellData objects for well.a/well.b")
     }
+  }
+
+  if(select.inf != "all") {
+    infected <- as.logical(data$train$Cells.Infection_IsInfected)
+    feature  <- !(names(data$train) %in% "Cells.Infection_IsInfected")
+    if(select.inf == "infected") {
+      message("dropping ", length(infected) - sum(infected), " non-infected ",
+              "cells.")
+      data$train <- data$train[infected,feature]
+    } else if (select.inf == "uninfected") {
+      message("dropping ", length(infected) - sum(!infected), " infected ",
+              "cells.")
+      data$train <- data$train[!infected,feature]
+    } else stop("unrecognized string for param select.inf")
   }
 
   if(glm.fun == "glmnet") {
