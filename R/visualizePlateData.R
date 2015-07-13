@@ -57,6 +57,10 @@ plateHeatmap <- function(plate.dat, feature, fun.aggregate="mean",
     stop("expecting 384 wells, instead got ", length(plate.vals), ".")
   }
 
+  well.type <- sapply(plate.dat$data, function(well) {
+    return(well$meta$well.type)
+  })
+
   res <- cbind(plate.vals, rep(LETTERS[1:16], each=24), rep(1:24, 16))
   colnames(res) <- c("value", "rows", "cols")
   res <- data.frame(res)
@@ -66,7 +70,7 @@ plateHeatmap <- function(plate.dat, feature, fun.aggregate="mean",
   res$rows <- factor(res$rows, levels=rev(LETTERS[1:16]), ordered=TRUE)
   res$cols <- factor(res$cols, levels=1:24, ordered=TRUE)
 
-  myPalette <- colorRampPalette(rev(brewer.pal(11, "Spectral")), space="Lab")
+  myPalette <- colorRampPalette(brewer.pal(9, "Reds")[3:9], space="Lab")
   if(as.character(substitute(fun.transform)) == "identity") {
     legend.title <- as.character(substitute(fun.aggregate))
   } else {
@@ -74,8 +78,18 @@ plateHeatmap <- function(plate.dat, feature, fun.aggregate="mean",
                           as.character(substitute(fun.transform)), sep="\n")
   }
 
-  heat <- ggplot(res, aes(x=cols, y=rows, fill=value)) +
-    geom_raster() +
+  frames <- data.frame(cbind(well.type, rep(1:24, 16),
+                             rev(rep(1:16, each=24))), stringsAsFactors=FALSE)
+  names(frames) <- c("well.type", "cols", "rows")
+  frames$cols <- as.integer(frames$cols)
+  frames$rows <- as.integer(frames$rows)
+  frames$color <- ifelse(frames$well.type == "SIRNA", "white", "black")
+
+  heat <- ggplot(data=res) +
+    geom_raster(aes(x=cols, y=rows, fill=value)) +
+    geom_rect(data=frames, size=0.5, fill=NA, colour=frames$color,
+              aes(xmin=cols - 0.475, xmax=cols + 0.475,
+                  ymin=rows - 0.475, ymax=rows + 0.475)) +
     scale_x_discrete(name="") +
     scale_y_discrete(name="") +
     theme_bw() +
