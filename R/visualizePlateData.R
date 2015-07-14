@@ -22,7 +22,6 @@
 #' plateHeatmap(data, "VoronoiCells.Location_Center_Y", median, sqrt)
 #'
 #' @export
-
 plateHeatmap <- function(plate.dat, feature, fun.aggregate="mean",
                          fun.transform="identity") {
   if(!any(class(plate.dat) == "PlateData")) {
@@ -99,4 +98,78 @@ plateHeatmap <- function(plate.dat, feature, fun.aggregate="mean",
                          name=legend.title) +
     coord_fixed()
   return(heat)
+}
+
+#' Boxpolot of feature per well
+#' 
+#' Given plate data and a feature name, create a boxplot of individual wells,
+#' faceted by row indices.
+#'
+#' @param plate.dat     Data used to generate boxplot Expecting a PlateData
+#'                      object.
+#' @param feature       Name of the feature to plot. Expecting a string.
+#'
+#' @return A ggplot2 plot object ready for printing.
+#'
+#' @examples
+#' plate <- PlateLocation("J101-2C")
+#' data  <- PlateData(plate)
+#' plateBoxplot(data, "Cells.AreaShape_Area")
+#'
+#' @export
+plateBoxplot <- function(plate.dat, feature) {
+  browser()
+  if(!any(class(plate.dat) == "PlateData")) {
+    stop("expecting PlateData for parameter \"plate.dat\".")
+  }
+  plate.vals <- sapply(plate.dat$data, function(well, feat) {
+    well.vals <- sapply(well$data, function(img, feat) {
+      res.vec <- lapply(img$data.vec, function(grp, feat) {
+        if(feat %in% colnames(grp)) {
+          return(grp[[feat]])
+        }
+      }, feat)
+      res.mat <- lapply(img$data.mat, function(grp, feat) {
+        if(feat %in% colnames(grp)) {
+          return(grp[,feat])
+        }
+      }, feat)
+      res <- unlist(list(res.vec, res.mat), recursive=FALSE)
+      res <- res[!sapply(res, is.null)]
+      if(length(res) != 1) {
+        stop("expecting to find exactly 1 feature, instead found ",
+             length(res), ".")
+      }
+      return(unlist(res))
+    }, feat)
+    res <- unlist(well.vals)
+    return(res)
+  }, feature)
+
+  if(length(plate.vals) != 384) {
+    stop("expecting 384 wells, instead got ", length(plate.vals), ".")
+  }
+
+  lengths <- sapply(plate.vals, length)
+  rows <- unlist(mapply(function(len, row) {
+      return(rep(row, len))
+  }, lengths, rep(LETTERS[1:16], each=24)))
+  cols <- unlist(mapply(function(len, row) {
+      return(rep(row, len))
+  }, lengths, rep(1:24, 16)))
+
+  res <- data.frame(cbind(unlist(plate.vals), rows, cols, paste0(rows, cols)),
+                    stringsAsFactors=FALSE)
+  names(res) <- c("val", "row", "col", "well")
+  res$val <- as.numeric(res$val)
+  res$col <- factor(res$col, levels=1:24, ordered=TRUE)
+
+  box <- ggplot(data=res) +
+    geom_boxplot(aes(x=col, y=val)) +
+    facet_wrap(~row, scales="fixed") +
+    theme_bw() +
+    ggtitle(paste("Boxplots of", feature, "faceted by rows")) +
+    xlab("column index") +
+    ylab(feature)
+  return(box)
 }
