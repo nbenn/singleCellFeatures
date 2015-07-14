@@ -118,7 +118,6 @@ plateHeatmap <- function(plate.dat, feature, fun.aggregate="mean",
 #'
 #' @export
 plateBoxplot <- function(plate.dat, feature) {
-  browser()
   if(!any(class(plate.dat) == "PlateData")) {
     stop("expecting PlateData for parameter \"plate.dat\".")
   }

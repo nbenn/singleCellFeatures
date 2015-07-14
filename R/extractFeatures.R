@@ -95,17 +95,9 @@ extractFeatures.ImageData <- function(x, select=NULL, drop=NULL,
       return(res)
     }))
     x$data.mat <- lapply(x$data.mat, function(object, feat) {
-      nms <- colnames(object)
-      if(!is.null(nms)) {
-        match <- nms %in% features
-        if(sum(match) == 0) return(NULL)
-        else return(object[,match])
-      } else {
-        nms <- names(object)
-        match <- nms %in% features
-        if(sum(match) == 0) return(NULL)
-        else return(object[match])
-      }
+      match <- colnames(object) %in% features
+      if(sum(match) == 0) return(NULL)
+      else return(object[, match, drop=FALSE])
     }, features)
 
     x$data.lst <- lapply(x$data.lst, function(object, feat) {

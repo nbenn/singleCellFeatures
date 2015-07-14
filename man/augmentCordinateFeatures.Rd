@@ -14,7 +14,7 @@ augmentCordinateFeatures(x, ...)
 \item{facet}{A vector of length 2 e.g. c(14, 10) corresponding to the
 number of bins in x-direction (14) and y-direction (10).}
 
-\item{center.dist}{A boolean whether to include distances.}
+\item{center.dist}{NULL or a boolean whether to include distances.}
 }
 \value{
 The augmented version of the original object.
