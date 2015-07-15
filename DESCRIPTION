@@ -6,10 +6,11 @@ Date: 2015-03-27
 Author: Nicolas Bennett
 Maintainer: Nicolas Bennett <nbennett@ethz.ch>
 Depends: Matrix, foreach, doParallel, stringi, yaml, plyr,
-  lpSolveAPI (>= 5.5.0.14), glmnet, ggplot2, RColorBrewer, R.matlab, 
+  lpSolveAPI (>= 5.5.0.14), glmnet, ggplot2, RColorBrewer, R.matlab,
   R (>= 3.2.0)
+Imports: sm, fields
+Suggests: knitr
 SystemRequirements: pigz
 Description: More about what it does (maybe more than one line)
 License: What license is it under?
-Suggests: knitr
 VignetteBuilder: knitr

@@ -14,7 +14,10 @@ augmentCordinateFeatures(x, ...)
 \item{facet}{A vector of length 2 e.g. c(14, 10) corresponding to the
 number of bins in x-direction (14) and y-direction (10).}
 
-\item{center.dist}{NULL or a boolean whether to include distances.}
+\item{center.dist}{Logical, whether to include distances to image/well
+centers.}
+
+\item{density}{Logical, whether to estimate densities.}
 }
 \value{
 The augmented version of the original object.
@@ -23,10 +26,12 @@ The augmented version of the original object.
 All features containing the strings "Location_Center_X" or
 "Location_Center_Y" are extended to include their membership to an ellipse (
 concentric w.r.t. image center), their membership to a tile and the distance
-to the image center.
+to the image center. If features labelled with "Location_Shifted_X" or
+"Location_Shifted_Y" are present (augmentImageLocation), Those are extended
+too.
 }
 \examples{
 data <- PlateData(PlateLocation("J101-2C"))
-aug <- augmentCordinateFeatures(data, 5, c(14, 10), TRUE)
+aug <- augmentCordinateFeatures(data, 5, c(14, 10), TRUE, TRUE)
 }
 

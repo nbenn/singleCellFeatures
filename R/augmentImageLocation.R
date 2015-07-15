@@ -43,41 +43,44 @@ augmentImageLocation.ImageData <- function(x) {
   img.group <- img.group[img.no]
   dim(img.group) <- c(1, 1)
   colnames(img.group) <- "Image.Group"
-  x$data.vec$Image <- cbind(x$data.vec$Image, img.group)
+  x$data.vec$Image <- data.frame(cbind(x$data.vec$Image, img.group))
 
   x$data.mat <- lapply(x$data.mat, function(group) {
-    index.x <- grep("Location_Center_X", colnames(group))
-    index.y <- grep("Location_Center_Y", colnames(group))
-    if(length(index.x) != length(index.y)) {
-      stop("expecting equal number of center features for x & y")
-    }
-    length.original <- ncol(group)
-    length.new      <- length(index.x)
-    if(nrow(group) > 0 & length.new > 0) {
-      feat.x <- group[,index.x, drop=FALSE]
-      feat.y <- group[,index.y, drop=FALSE]
-      shifts <- cbind(rep(c(0, 1402, 2804), 3), rep(c(2100, 1050, 0), each=3))
-      if(n.img == 6) {
-        shifts <- shifts[4:9,]
+    if(!is.null(group)) {
+      index.x <- grep("Location_Center_X", colnames(group))
+      index.y <- grep("Location_Center_Y", colnames(group))
+      if(length(index.x) != length(index.y)) {
+        stop("expecting equal number of center features for x & y")
       }
-      shifts <- shifts[img.no,]
-      shifted.x <- sapply(1:ncol(feat.x), function(ind, x, shift.x) {
-        return(x[,ind] + shift.x)
-      }, feat.x, shifts[1])
-      shifted.y <- sapply(1:ncol(feat.y), function(ind, y, shift.y) {
-        return(y[,ind] + shift.y)
-      }, feat.y, shifts[2])
-      dim(shifted.x) <- dim(feat.x)
-      dim(shifted.y) <- dim(feat.y)
-      res.shift <- cbind(shifted.x, shifted.y)
-      colnames(res.shift) <- c(gsub("Center_X$", "Shifted_X",
-                                    colnames(group)[index.x]),
-                               gsub("Center_Y$", "Shifted_Y",
-                                    colnames(group)[index.y]))
-      return(cbind(group, res.shift))
-    } else {
-      return(group)
-    }
+      length.original <- ncol(group)
+      length.new      <- length(index.x)
+      if(nrow(group) > 0 & length.new > 0) {
+        feat.x <- group[,index.x, drop=FALSE]
+        feat.y <- group[,index.y, drop=FALSE]
+        shifts <- cbind(rep(c(0, 1402, 2804), 3),
+                        rep(c(2100, 1050, 0), each=3))
+        if(n.img == 6) {
+          shifts <- shifts[4:9,]
+        }
+        shifts <- shifts[img.no,]
+        shifted.x <- sapply(1:ncol(feat.x), function(ind, x, shift.x) {
+          return(x[,ind] + shift.x)
+        }, feat.x, shifts[1])
+        shifted.y <- sapply(1:ncol(feat.y), function(ind, y, shift.y) {
+          return(y[,ind] + shift.y)
+        }, feat.y, shifts[2])
+        dim(shifted.x) <- dim(feat.x)
+        dim(shifted.y) <- dim(feat.y)
+        res.shift <- cbind(shifted.x, shifted.y)
+        colnames(res.shift) <- c(gsub("Center_X$", "Shifted_X",
+                                      colnames(group)[index.x]),
+                                 gsub("Center_Y$", "Shifted_Y",
+                                      colnames(group)[index.y]))
+        return(cbind(group, res.shift))
+      } else {
+        return(group)
+      }
+    } else return(NULL)
   })
   return(x)
 }
