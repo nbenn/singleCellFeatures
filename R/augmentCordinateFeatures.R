@@ -146,9 +146,9 @@ augmentCordinateFeatures.ImageData <- function(x, ellipse=NULL, facet=NULL,
     grid[as.numeric(names(counts))] <- counts
     grid <- grid > 0
     # extend grid with a frame of zeros
-    grid.ext <- rbind(rep(0, (facet[1] + 2)),
-                      cbind(rep(0, facet[2]), grid, rep(0, facet[2])),
-                      rep(0, (facet[1] + 2)))
+    grid.ext <- rbind(rep(1, (facet[1] + 2)),
+                      cbind(rep(1, facet[2]), grid, rep(1, facet[2])),
+                      rep(1, (facet[1] + 2)))
     # set up stencil
     row <- rep(rep(1:facet[2], facet[1]))
     col <- rep(1:facet[1], each=facet[2])
