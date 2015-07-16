@@ -1,0 +1,189 @@
+---
+title: "1.3 Coordinate augmentation features"
+author: "Nicolas Bennett"
+date: "`r Sys.Date()`"
+output: rmarkdown::pdf_document
+vignette: >
+  %\VignetteIndexEntry{1.3 Coordinate augmentation features}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r, setup, echo=FALSE}
+suppressPackageStartupMessages(library(knitr))
+suppressPackageStartupMessages(library(singleCellFeatures))
+options(scipen=1, digits=2, singleCellFeatures.progressBars="none")
+opts_chunk$set(fig.height=8, fig.width=12)
+```
+
+Several coordination augmentation features have been implemented. While the previous two vignettes showed off some of them, this one summarizes all available newly generated coordinate features.
+
+```{r, loadData, cache=TRUE}
+features <- c("^Image.Count_Cells$",
+              "^Nuclei.AreaShape_Area$",
+              "^Nuclei.AreaShape_FormFactor$",
+              "^Cells.Location_Center_X$",
+              "^Cells.Location_Center_Y$",
+              "^Cells.AreaShape_Area$",
+              "^Cells.Intensity_MeanIntensity_CorrPathogen$",
+              "^Cells.Intensity_StdIntensity_CorrPathogen$",
+              "^Nuclei.Intensity_MeanIntensity_CorrPathogen$",
+              "^Nuclei.Intensity_StdIntensity_CorrPathogen$")
+data.red <- PlateData(PlateLocation("J107-2C"), select=features)
+data.aug <- augmentImageLocation(data.red)
+data.aug <- augmentCordinateFeatures(data.aug, 5, c(14, 10), TRUE, TRUE)
+molten   <- meltData(data.aug)
+cells    <- molten$mat$Cells
+thin <- sample.int(nrow(cells), nrow(cells) / 20)
+vlines <- data.frame(c(0, 1397, 2799, 4196))
+hlines <- data.frame(c(0, 1045, 2095, 3140))
+names(vlines) <- "border"
+names(hlines) <- "border"
+
+```
+
+```{r imgCentDist, echo=FALSE}
+ggplot(cells[thin,], aes(x=Cells.Location_Shifted_X,
+                         y=Cells.Location_Shifted_Y)) +
+  geom_point(aes(colour=Cells.Location_Dist_Center_Image)) +
+  scale_colour_gradientn(colours=brewer.pal(9, "YlGnBu"),
+    guide=guide_colourbar(title="Distance from image center", 
+                          barwidth=25, barheight=2)) +
+  theme_bw(base_size=18) +
+  theme(legend.position="bottom", axis.title=element_blank(),
+        axis.text=element_blank(), axis.ticks=element_blank(),
+        line=element_blank()) +
+  ggtitle("Cell location and distance from image center") +
+  geom_vline(data=vlines, aes(xintercept=border)) +
+  geom_hline(data=hlines, aes(yintercept=border))
+
+```
+
+```{r wellCentDist, echo=FALSE}
+ggplot(cells[thin,], aes(x=Cells.Location_Shifted_X,
+                         y=Cells.Location_Shifted_Y)) +
+  geom_point(aes(colour=Cells.Location_Dist_Center_Well)) +
+  scale_colour_gradientn(colours=brewer.pal(9, "YlGnBu"),
+    guide=guide_colourbar(title="Distance from well center",
+                          barwidth=25, barheight=2)) +
+  theme_bw(base_size = 18) +
+  theme(legend.position="bottom", axis.title=element_blank(),
+        axis.text=element_blank(), axis.ticks=element_blank(),
+        line=element_blank()) +
+  ggtitle("Cell location and distance from well center") +
+  geom_vline(data=vlines, aes(xintercept=border)) +
+  geom_hline(data=hlines, aes(yintercept=border))
+
+```
+
+```{r facetTypes, echo=FALSE}
+ggplot(cells[thin,], aes(x=Cells.Location_Shifted_X,
+                         y=Cells.Location_Shifted_Y)) +
+  geom_point(aes(colour=factor(Cells.Location_Facet_Type))) +
+  scale_colour_brewer(palette="YlGnBu",
+                      guide=guide_legend(title="Facet type", nrow=2),
+                      labels=c("no border", "inward border", "inward edge",
+                               "outward border", "both borders",
+                               "outward edge")) +
+  theme_bw(base_size = 18) +
+  theme(legend.position="bottom", axis.title=element_blank(),
+        axis.text=element_blank(), axis.ticks=element_blank(),
+        line=element_blank()) +
+  ggtitle("Cell location and facet type") +
+  geom_vline(data=vlines, aes(xintercept=border)) +
+  geom_hline(data=hlines, aes(yintercept=border))
+
+```
+
+```{r facetXwell, echo=FALSE}
+ggplot(cells[thin,], aes(x=Cells.Location_Shifted_X,
+                         y=Cells.Location_Shifted_Y)) +
+  geom_point(aes(colour=Cells.Location_Facet_X_Well)) +
+  scale_colour_gradientn(colours=brewer.pal(9, "YlGnBu"),
+    guide=guide_colourbar(title="Facet number", barwidth=25, barheight=2)) +
+  theme_bw(base_size = 18) +
+  theme(legend.position="bottom", axis.title=element_blank(),
+        axis.text=element_blank(), axis.ticks=element_blank(),
+        line=element_blank()) +
+  ggtitle("X-coord facet number (well)") +
+  geom_vline(data=vlines, aes(xintercept=border)) +
+  geom_hline(data=hlines, aes(yintercept=border))
+
+```
+
+```{r facetYwell, echo=FALSE}
+ggplot(cells[thin,], aes(x=Cells.Location_Shifted_X,
+                         y=Cells.Location_Shifted_Y)) +
+  geom_point(aes(colour=Cells.Location_Facet_Y_Well)) +
+  scale_colour_gradientn(colours=brewer.pal(9, "YlGnBu"),
+    guide=guide_colourbar(title="Facet number", barwidth=25, barheight=2)) +
+  theme_bw(base_size = 18) +
+  theme(legend.position="bottom", axis.title=element_blank(),
+        axis.text=element_blank(), axis.ticks=element_blank(),
+        line=element_blank()) +
+  ggtitle("Y-coord facet number (well)") +
+  geom_vline(data=vlines, aes(xintercept=border)) +
+  geom_hline(data=hlines, aes(yintercept=border))
+
+```
+
+```{r imgEllipse, echo=FALSE}
+ggplot(cells[thin,], aes(x=Cells.Location_Shifted_X,
+                         y=Cells.Location_Shifted_Y)) +
+  geom_point(aes(colour=factor(Cells.Location_In_Ellipse_Image))) +
+  scale_colour_brewer(name="Ellipses", palette="YlGnBu") +
+  theme_bw(base_size = 18) +
+  theme(legend.position="bottom", axis.title=element_blank(),
+        axis.text=element_blank(), axis.ticks=element_blank(),
+        line=element_blank()) +
+  ggtitle("Cell location and image ellipse membership") +
+  geom_vline(data=vlines, aes(xintercept=border)) +
+  geom_hline(data=hlines, aes(yintercept=border))
+
+```
+
+```{r wellEllipse, echo=FALSE}
+ggplot(cells[thin,], aes(x=Cells.Location_Shifted_X,
+                         y=Cells.Location_Shifted_Y)) +
+  geom_point(aes(colour=factor(Cells.Location_In_Ellipse_Well))) +
+  scale_colour_brewer(name="Ellipses", palette="YlGnBu") +
+  theme_bw(base_size = 18) +
+  theme(legend.position="bottom", axis.title=element_blank(),
+        axis.text=element_blank(), axis.ticks=element_blank(),
+        line=element_blank()) +
+  ggtitle("Cell location and well ellipse membership") +
+  geom_vline(data=vlines, aes(xintercept=border)) +
+  geom_hline(data=hlines, aes(yintercept=border))
+
+```
+
+```{r neighbors, echo=FALSE}
+ggplot(cells[cells$Well.Name == "H6",], aes(x=Cells.Location_Shifted_X,
+                                            y=Cells.Location_Shifted_Y)) +
+  geom_point(aes(colour=factor(Cells.Location_Facet_Border)), size=4) +
+  scale_colour_brewer(name="Non-empty neighbor facets", palette="YlGnBu") +
+  theme_bw(base_size = 18) +
+  theme(legend.position="bottom", axis.title=element_blank(),
+        axis.text=element_blank(), axis.ticks=element_blank(),
+        line=element_blank()) +
+  ggtitle("Cell location and facet borders") +
+  geom_vline(data=vlines, aes(xintercept=border)) +
+  geom_hline(data=hlines, aes(yintercept=border))
+
+```
+
+```{r density, echo=FALSE}
+ggplot(cells[cells$Well.Name == "H6",], aes(x=Cells.Location_Shifted_X,
+                                            y=Cells.Location_Shifted_Y)) +
+  geom_point(aes(colour=Cells.Location_Kern_Dens_Image), size=4) +
+  scale_colour_gradientn(colours=brewer.pal(9, "YlGnBu"),
+    guide=guide_colourbar(title="Cell density", barwidth=25, barheight=2)) +
+  theme_bw(base_size = 18) +
+  theme(legend.position="bottom", axis.title=element_blank(),
+        axis.text=element_blank(), axis.ticks=element_blank(),
+        line=element_blank()) +
+  ggtitle("Cell location and cell density") +
+  geom_vline(data=vlines, aes(xintercept=border)) +
+  geom_hline(data=hlines, aes(yintercept=border))
+
+```

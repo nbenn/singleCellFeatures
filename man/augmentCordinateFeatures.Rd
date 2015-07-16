@@ -25,10 +25,12 @@ The augmented version of the original object.
 \description{
 All features containing the strings "Location_Center_X" or
 "Location_Center_Y" are extended to include their membership to an ellipse (
-concentric w.r.t. image center), their membership to a tile and the distance
-to the image center. If features labelled with "Location_Shifted_X" or
-"Location_Shifted_Y" are present (augmentImageLocation), Those are extended
-too.
+concentric w.r.t. image center/well center), their membership to a tile (at
+well and image level), the number of nonempty neighbor tiles, the type of
+tile (inwards/outwards facing image border/edge) the distance to the image/
+well center, the local object density to the image center. If features
+labelled  with "Location_Shifted_X" or "Location_Shifted_Y" are present
+(augmentImageLocation), Those are extended too.
 }
 \examples{
 data <- PlateData(PlateLocation("J101-2C"))

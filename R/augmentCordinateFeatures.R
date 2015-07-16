@@ -2,10 +2,12 @@
 #'
 #' All features containing the strings "Location_Center_X" or
 #' "Location_Center_Y" are extended to include their membership to an ellipse (
-#' concentric w.r.t. image center), their membership to a tile and the distance
-#' to the image center. If features labelled with "Location_Shifted_X" or
-#' "Location_Shifted_Y" are present (augmentImageLocation), Those are extended
-#' too.
+#' concentric w.r.t. image center/well center), their membership to a tile (at
+#' well and image level), the number of nonempty neighbor tiles, the type of
+#' tile (inwards/outwards facing image border/edge) the distance to the image/
+#' well center, the local object density to the image center. If features
+#' labelled  with "Location_Shifted_X" or "Location_Shifted_Y" are present
+#' (augmentImageLocation), Those are extended too.
 #'
 #' @param x           The PlateData/WellData/ImageData object of interest.
 #' @param ellipse     An integer corresponding to the number of ellipses.
@@ -352,8 +354,10 @@ augmentCordinateFeatures.ImageData <- function(x, ellipse=NULL, facet=NULL,
             gsub("Center_X$", "Facet_Type", colnames(group)[index.x]),
             gsub("Center_X$", "Facet_Border", colnames(group)[index.x]))
           if(shifted) {
-            res.fac <- cbind(facet.x, facet.y, (facet.x * x$image.col),
-                             (facet.y * x$image.row), facet.type, facet.border)
+            shifted.x <- facet.x + (x$image.col - 1) * facet[1]
+            shifted.y <- facet.y + (x$image.total / 3 - x$image.row) * facet[2]
+            res.fac <- cbind(facet.x, facet.y, shifted.x, shifted.y,
+                             facet.type, facet.border)
             colnames(res.fac) <- c(
               gsub("Center_X$", "Facet_X_Image", colnames(group)[index.x]),
               gsub("Center_Y$", "Facet_Y_Image", colnames(group)[index.y]),
