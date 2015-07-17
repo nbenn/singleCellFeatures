@@ -1,3 +1,124 @@
+#' Move feature(s) to different group
+#'
+#' A specified feature (or a vector of features) is moved to the desired group.
+#' If the target group has more rows than the source group, the features are
+#' replicated according to the respective pattern and if the target group has
+#' fewer rows, the feature is summarized with the supplied function.
+#'
+#' @param data      The data (the result of a call to meltData) to be acted
+#'                  upon.
+#' @param from      The feature name (or vector of feature names) to be added. 
+#' @param to        The group to add them to.
+#' @param aggregate If the target group is smaller, this function is used to
+#'                  aggregate the data.
+#' 
+#' @return The data.frame specified with the parameter to with the chosen
+#'         features added.
+#' 
+#' @examples
+#' data   <- PlateData(PlateLocation("J107-2C"))
+#' molten <- meltData(data)
+#' test   <- moveFeatures(molten, from="Cells.AreaShape_Area", to="Image")
+#' 
+#' @export
+moveFeatures <- function(data, from, to, aggregate="mean") {
+  df.to <- lapply(data, function(types, to) {
+    if(to %in% names(types)) {
+      return(types)
+    } else {
+      return(NULL)
+    }
+  }, to)
+  not.null <- which(!sapply(df.to, is.null))[1]
+  df.to  <- df.to[[not.null]]
+  not.null <- which(!sapply(df.to, is.null))[1]
+  df.to  <- df.to[[not.null]]
+  if("Image.Index_Plate" %in% names(df.to)) {
+    image <- tabulate(df.to$Image.Index_Plate, nbins=3456)
+  } else image <- NULL
+  if("Well.Index" %in% names(df.to)) {
+    well <- tabulate(df.to$Well.Index, nbins=384)
+  } else well <- NULL
+  if("Plate.Barcode" %in% names(df.to)) {
+    plate <- table(df.to$Plate.Barcode)
+  } else plate <- NULL
+  if(is.null(image) & is.null(well) & is.null(plate)) {
+    stop("need one of \"Image.Index_Plate\", \"Well.Index\", or ",
+         "\"Plate.Barcode\" in \"from\" data.frame.")
+  }
+
+  add <- lapply(from, function(feat, dat, dest, pattern) {
+    source <- lapply(dat, function(types, feat) {
+      res <- lapply(types, function(group, feat) {
+        if(feat %in% names(group)) {
+          return(group)
+        } else {
+          return(NULL)
+        }
+      }, feat)
+      not.null <- which(!sapply(res, is.null))[1]
+      return(res[[not.null]])
+    }, feat)
+    not.null <- which(!sapply(source, is.null))[1]
+    source   <- source[[not.null]]
+    if("Image.Index_Plate" %in% names(source) & !is.null(pattern[[1]])) {
+      test    <- "Image.Index_Plate"
+      pattern <- pattern[[1]]
+    } else if("Well.Index" %in% names(source) & !is.null(pattern[[2]])) {
+      test    <- "Well.Index"
+      pattern <- pattern[[2]]
+    } else if("Plate.Barcode" %in% names(source) & !is.null(pattern[[3]])) {
+      test    <- "Plate.Barcode"
+      pattern <- pattern[[3]]
+    } else {
+      stop("need one of \"Image.Index_Plate\", \"Well.Index\", or ",
+           "\"Plate.Barcode\" in \"to\" data.frame.")
+    }
+    if(nrow(dest) > nrow(source)) {
+      if(!all(rep(source[[test]], pattern) == dest[[test]])) {
+        stop("source and dest ordering are not identical and enforcing this",
+             "\n  is currently not implemented (>).")
+      }
+      res      <- rep(source[[feat]], pattern)
+      dim(res) <- c(length(res), 1)
+      return(res)
+    } else if(nrow(dest) == nrow(source)) {
+      if(!all(source[[test]] == dest[[test]])) {
+        stop("source and dest ordering are not identical and enforcing this",
+             "\n  is currently not implemented (==).")
+      }
+      res      <- source[[feat]]
+      dim(res) <- c(length(res), 1)
+      return(res)
+    } else if(nrow(dest) < nrow(source)) {
+      if(test == "Image.Index_Plate") {
+        pattern <- tabulate(source$Image.Index_Plate, nbins=3456)
+      } else if(test == "Well.Index") {
+        pattern <- tabulate(source$Well.Index, nbins=384)
+      } else if(test == "Plate.Barcode") {
+        pattern <- table(source$Plate.Barcode)
+      } else stop("?!?")
+      if(!all(rep(dest[[test]], pattern) == source[[test]])) {
+        stop("source and dest ordering are not identical and enforcing this",
+             "\n  is currently not implemented (<).")
+      }
+      pattern <- cbind(c(1, cumsum(pattern[-length(pattern)]) + 1),
+                       cumsum(pattern))
+      fun <- get(aggregate, mode="function")
+      res <- apply(pattern, 1, function(bounds, data, func) {
+        if(bounds[1] >= bounds[2]) return(NA)
+        else return(func(data[bounds[1]:bounds[2]]))
+      }, source[[feat]], fun)
+      dim(res) <- c(length(res), 1)
+      return(res)
+    } else stop("?!?")
+  }, data, df.to, list(image, well, plate))
+  add <- do.call(cbind, add)
+  res <- cbind(df.to, add, stringsAsFactors=FALSE)
+  names(res) <- c(names(df.to), from)
+  return(res)
+}
+
 #' Combine all data in a given Data object
 #'
 #' Given a PlateData/WellData/ImageData object, rbind all data contained in the
@@ -167,6 +288,8 @@ meltData.WellData <- function(x) {
 #' @export
 meltData.ImageData <- function(x) {
   well.index  <- getWellIndex1D(x$well.row, x$well.col, NULL, x$image.total)
+  image.index <- getWellIndex1D(x$well.row, x$well.col, x$image.index,
+                                x$image.total)
   well.name   <- paste0(x$well.row, x$well.col)
   
   res.vec <- lapply(x$data.vec, function(group) {
@@ -174,10 +297,10 @@ meltData.ImageData <- function(x) {
       return(NULL)
     } else {
       if (nrow(group) > 0) {
-        newcols <- data.frame(x$image.index, well.index, well.name,
-                              x$plate, stringsAsFactors=FALSE)
-        colnames(newcols) <- c("Image.Index", "Well.Index", "Well.Name",
-                               "Plate.Barcode")
+        newcols <- data.frame(x$image.index, image.index, well.index,
+                              well.name, x$plate, stringsAsFactors=FALSE)
+        colnames(newcols) <- c("Image.Index", "Image.Index_Plate",
+                               "Well.Index", "Well.Name", "Plate.Barcode")
         return(cbind(group, newcols))
       } else {
         return(NULL)
@@ -191,19 +314,21 @@ meltData.ImageData <- function(x) {
     } else {
       n.rows <- nrow(group)
       if(n.rows > 0) {
-        image.ind      <- rep(x$image.index, n.rows)
-        dim(image.ind) <- c(n.rows, 1)
-        well.ind       <- rep(well.index, n.rows)
-        dim(well.ind)  <- c(n.rows, 1)
-        well.nme       <- rep(well.name, n.rows)
-        dim(well.nme)  <- c(n.rows, 1)
-        plate          <- rep(x$plate, n.rows)
-        dim(plate)     <- c(n.rows, 1)
+        image.ind        <- rep(x$image.index, n.rows)
+        dim(image.ind)   <- c(n.rows, 1)
+        imgwell.ind      <- rep(image.index, n.rows)
+        dim(imgwell.ind) <- c(n.rows, 1)
+        well.ind         <- rep(well.index, n.rows)
+        dim(well.ind)    <- c(n.rows, 1)
+        well.nme         <- rep(well.name, n.rows)
+        dim(well.nme)    <- c(n.rows, 1)
+        plate            <- rep(x$plate, n.rows)
+        dim(plate)       <- c(n.rows, 1)
 
-        info      <- data.frame(image.ind, well.ind, well.nme, plate,
-                                stringsAsFactors=FALSE)
-        colnames(info) <- c("Image.Index", "Well.Index", "Well.Name",
-                            "Plate.Barcode")
+        info             <- data.frame(image.ind, imgwell.ind, well.ind,
+                                       well.nme, plate, stringsAsFactors=FALSE)
+        colnames(info)   <- c("Image.Index", "Image.Index_Plate", "Well.Index",
+                              "Well.Name", "Plate.Barcode")
 
         return(cbind(group, info))
       } else {
