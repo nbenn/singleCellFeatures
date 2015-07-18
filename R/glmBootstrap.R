@@ -13,7 +13,7 @@
 #' @param glm.fun     The glm function to use.
 #' @param norm.feat   Which features to normalize. Either a regular
 #'                    expression or "all".
-#' @param norm.method How to normalize (see function normalizeData for
+#' @param norm.method How to normalize (see function normalizeMoltenData for
 #'                    details). 
 #' @param norm.sep    Separate data into wells form normalization? 
 #' @param select.inf  Run stability analysis only on "infected", "uninfected"
@@ -45,7 +45,8 @@ glmBootstrapStability <- function(well.a, well.b, n.rep=100, n.hit=20,
     data.b <- meltData(well.b)
     data <- prepareDataforGlm(data.a$mat$Cells, data.b$mat$Cells, test=NULL)
     if(norm.method != "none") {
-      data$train <- normalizeData(data$train, norm.feat, norm.method, norm.sep)
+      data$train <- normalizeMoltenData(data$train, norm.feat, norm.method,
+                                        norm.sep)
     }
   } else {
     if(class(well.a) == "list" & class(well.b) == "list") {
@@ -63,8 +64,8 @@ glmBootstrapStability <- function(well.a, well.b, n.rep=100, n.hit=20,
       }))
       data <- prepareDataforGlm(data.a, data.b, test=NULL)
       if(norm.method != "none") {
-        data$train <- normalizeData(data$train, norm.feat, norm.method,
-                                    norm.sep)
+        data$train <- normalizeMoltenData(data$train, norm.feat, norm.method,
+                                          norm.sep)
       }
     } else {
       stop("expexing lists or WellData objects for well.a/well.b")

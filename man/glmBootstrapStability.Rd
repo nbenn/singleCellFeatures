@@ -27,7 +27,7 @@ glmBootstrapStability(well.a, well.b, n.rep = 100, n.hit = 20,
 \item{norm.feat}{Which features to normalize. Either a regular
 expression or "all".}
 
-\item{norm.method}{How to normalize (see function normalizeData for
+\item{norm.method}{How to normalize (see function normalizeMoltenData for
 details).}
 
 \item{norm.sep}{Separate data into wells form normalization?}

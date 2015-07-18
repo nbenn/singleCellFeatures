@@ -31,8 +31,7 @@ moveFeatures <- function(data, from, to, aggregate="mean") {
   }, to)
   not.null <- which(!sapply(df.to, is.null))[1]
   df.to  <- df.to[[not.null]]
-  not.null <- which(!sapply(df.to, is.null))[1]
-  df.to  <- df.to[[not.null]]
+  df.to  <- df.to[[match(to, names(df.to))[1]]]
   if("Image.Index_Plate" %in% names(df.to)) {
     image <- tabulate(df.to$Image.Index_Plate, nbins=3456)
   } else image <- NULL
@@ -46,7 +45,6 @@ moveFeatures <- function(data, from, to, aggregate="mean") {
     stop("need one of \"Image.Index_Plate\", \"Well.Index\", or ",
          "\"Plate.Barcode\" in \"from\" data.frame.")
   }
-
   add <- lapply(from, function(feat, dat, dest, pattern) {
     source <- lapply(dat, function(types, feat) {
       res <- lapply(types, function(group, feat) {
@@ -98,12 +96,17 @@ moveFeatures <- function(data, from, to, aggregate="mean") {
       } else if(test == "Plate.Barcode") {
         pattern <- table(source$Plate.Barcode)
       } else stop("?!?")
-      if(!all(rep(dest[[test]], pattern) == source[[test]])) {
+      pattern <- cbind(c(1, cumsum(pattern[-length(pattern)]) + 1),
+                       cumsum(pattern))
+      test.dat <- apply(pattern, 1, function(bounds, data) {
+        if(bounds[1] >= bounds[2]) return(NA)
+        else return(unique(data[bounds[1]:bounds[2]]))
+      }, source[[test]])
+      test.dat[which(is.na(test.dat))] <- which(is.na(test.dat))
+      if(!all(dest[[test]] == test.dat)) {
         stop("source and dest ordering are not identical and enforcing this",
              "\n  is currently not implemented (<).")
       }
-      pattern <- cbind(c(1, cumsum(pattern[-length(pattern)]) + 1),
-                       cumsum(pattern))
       fun <- get(aggregate, mode="function")
       res <- apply(pattern, 1, function(bounds, data, func) {
         if(bounds[1] >= bounds[2]) return(NA)

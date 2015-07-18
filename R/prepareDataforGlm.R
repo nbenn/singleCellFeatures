@@ -109,11 +109,11 @@ prepareDataforGlm <- function(active, control, drop.feat=NULL,
 #' melted    <- lapply(cleaned, meltData)
 #' data.mint <- prepareDataforGlm(melted[[2]]$mat$Cells, 
 #'                                melted[[1]]$mat$Cells, test=NULL)$train
-#' data.scal <- normalizeData(data.mint, features="intensity",
-#'                            method="unitInterval")
+#' data.scal <- normalizeMoltenData(data.mint, features="intensity",
+#'                                  method="unitInterval")
 #' 
 #' @export
-normalizeData <- function(data, features="all", method="zScore",
+normalizeMoltenData <- function(data, features="all", method="zScore",
                           separate.wells=FALSE) {
 
   unitInterval <- function(x) {
@@ -173,7 +173,7 @@ normalizeData <- function(data, features="all", method="zScore",
     names(result)[length(result)] <- "Response"
   } else {
     indices <- grepl(features, names(data.mat), ignore.case=TRUE)
-    message("applying normalization to selected ", sum(indices), 
+    message("applying normalization to selected ", sum(indices),
             " features.")
     if(!separate.wells) {
       norm.all <- apply(data.mat[,indices], 2, normFun)
