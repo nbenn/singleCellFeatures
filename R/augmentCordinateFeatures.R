@@ -235,7 +235,7 @@ augmentCordinateFeatures.ImageData <- function(x, ellipse=NULL, facet=NULL,
       elli1 <- image.center1 - 100
       elli2 <- image.center2 - 200
       if(shifted) {
-        message("using a single ellipse, 100px (within images) and  300px ",
+        message("using a single ellipse, 100px (within images) and  200px ",
                 "(within wells) dist from borders.")
       } else {
         message("using a single ellipse, 100px dist from borders.")

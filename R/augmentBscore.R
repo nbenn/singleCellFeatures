@@ -42,20 +42,18 @@ augmentBscore.PlateData <- function(x, features="intensity",
       }, feat)
       not.null <- which(!sapply(res, is.null))[1]
       res <- res[[not.null]]
+      if(is.null(res)) return(NA)
       if(is.numeric(res)) return(fun(res))
       else return(unique(res))
     }, meltData(well), fun)
     names(res) <- feat
     return(res)
-  }, c(matched.feats, "Well.Type"), aggr.fun, .progress=progress.bar)
-  well.annot <- sapply(dat.aggr, function(dat) return(dat[["Well.Type"]]))
-  is.control <- matrix(well.annot == "CONTROL", nrow=16, ncol=24, byrow=TRUE)
-  res <- lapply(matched.feats, function(feat, data, ctrl) {
+  }, matched.feats, aggr.fun, .progress=progress.bar)
+  res <- lapply(matched.feats, function(feat, data) {
     dat <- sapply(data, function(dat, fet) {
       return(dat[[fet]])
     }, feat)
     mat.all <- mat.smp <- matrix(dat, nrow=16, ncol=24, byrow=TRUE)
-    mat.smp[ctrl] <- NA
     medp <- medpolish(mat.smp, eps=1e-05, maxiter=200,
                       trace.iter=FALSE, na.rm=TRUE)
     medp$row[is.na(medp$row)] <- 0
@@ -66,7 +64,7 @@ augmentBscore.PlateData <- function(x, features="intensity",
     res <- data.frame(cbind(all, row, col))
     names(res) <- paste0(feat, c("_BscoAll", "_BscoRow", "_BscoCol"))
     return(res)
-  }, dat.aggr, is.control)
+  }, dat.aggr)
   res <- do.call(cbind, res)
   for(i in 1:384) {
     add <- res[i,]

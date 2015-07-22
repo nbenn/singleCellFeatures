@@ -20,6 +20,10 @@ augmentImageLocation <- function(x) {
 
 #' @export
 augmentImageLocation.PlateData <- function(x) {
+  progress.bar <- getOption("singleCellFeatures.progressBars")
+  if(progress.bar != "none") {
+    message("augmenting image location features:")
+  }
   x$data <- llply(x$data, augmentImageLocation,
                   .progress=getOption("singleCellFeatures.progressBars"))
   return(x)

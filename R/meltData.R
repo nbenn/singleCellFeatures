@@ -22,6 +22,12 @@
 #' 
 #' @export
 moveFeatures <- function(data, from, to, aggregate="mean") {
+  all.feats <- unlist(sapply(data, function(types) {
+      return(sapply(types, names))
+    }))
+  curr.feats <- unlist(sapply(from, function(feat, all) {
+      return(grep(feat, all, ignore.case=TRUE, value=TRUE))
+    }, all.feats))
   df.to <- lapply(data, function(types, to) {
     if(to %in% names(types)) {
       return(types)
@@ -43,9 +49,9 @@ moveFeatures <- function(data, from, to, aggregate="mean") {
   } else plate <- NULL
   if(is.null(image) & is.null(well) & is.null(plate)) {
     stop("need one of \"Image.Index_Plate\", \"Well.Index\", or ",
-         "\"Plate.Barcode\" in \"from\" data.frame.")
+         "\"Plate.Barcode\" in \"to\" data.frame.")
   }
-  add <- lapply(from, function(feat, dat, dest, pattern) {
+  add <- lapply(curr.feats, function(feat, dat, dest, pattern) {
     source <- lapply(dat, function(types, feat) {
       res <- lapply(types, function(group, feat) {
         if(feat %in% names(group)) {
@@ -61,16 +67,16 @@ moveFeatures <- function(data, from, to, aggregate="mean") {
     source   <- source[[not.null]]
     if("Image.Index_Plate" %in% names(source) & !is.null(pattern[[1]])) {
       test    <- "Image.Index_Plate"
-      pattern <- pattern[[1]]
+      pattern <- pattern[[1]][source[[test]]]
     } else if("Well.Index" %in% names(source) & !is.null(pattern[[2]])) {
       test    <- "Well.Index"
-      pattern <- pattern[[2]]
+      pattern <- pattern[[2]][source[[test]]]
     } else if("Plate.Barcode" %in% names(source) & !is.null(pattern[[3]])) {
       test    <- "Plate.Barcode"
       pattern <- pattern[[3]]
     } else {
       stop("need one of \"Image.Index_Plate\", \"Well.Index\", or ",
-           "\"Plate.Barcode\" in \"to\" data.frame.")
+           "\"Plate.Barcode\" in \"from\" data.frame.")
     }
     if(nrow(dest) > nrow(source)) {
       if(!all(rep(source[[test]], pattern) == dest[[test]])) {
@@ -79,7 +85,7 @@ moveFeatures <- function(data, from, to, aggregate="mean") {
       }
       res      <- rep(source[[feat]], pattern)
       dim(res) <- c(length(res), 1)
-      return(res)
+      return(data.frame(res, stringsAsFactors=FALSE))
     } else if(nrow(dest) == nrow(source)) {
       if(!all(source[[test]] == dest[[test]])) {
         stop("source and dest ordering are not identical and enforcing this",
@@ -87,7 +93,7 @@ moveFeatures <- function(data, from, to, aggregate="mean") {
       }
       res      <- source[[feat]]
       dim(res) <- c(length(res), 1)
-      return(res)
+      return(data.frame(res, stringsAsFactors=FALSE))
     } else if(nrow(dest) < nrow(source)) {
       if(test == "Image.Index_Plate") {
         pattern <- tabulate(source$Image.Index_Plate, nbins=3456)
@@ -113,12 +119,12 @@ moveFeatures <- function(data, from, to, aggregate="mean") {
         else return(func(data[bounds[1]:bounds[2]]))
       }, source[[feat]], fun)
       dim(res) <- c(length(res), 1)
-      return(res)
+      return(data.frame(res, stringsAsFactors=FALSE))
     } else stop("?!?")
   }, data, df.to, list(image, well, plate))
   add <- do.call(cbind, add)
   res <- cbind(df.to, add, stringsAsFactors=FALSE)
-  names(res) <- c(names(df.to), from)
+  names(res) <- c(names(df.to), curr.feats)
   return(res)
 }
 
