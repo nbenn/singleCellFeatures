@@ -54,8 +54,12 @@ augmentBscore.PlateData <- function(x, features="intensity",
       return(dat[[fet]])
     }, feat)
     mat.all <- mat.smp <- matrix(dat, nrow=16, ncol=24, byrow=TRUE)
-    medp <- medpolish(mat.smp, eps=1e-05, maxiter=200,
-                      trace.iter=FALSE, na.rm=TRUE)
+    medp <- tryCatch({
+      medpolish(mat.smp, eps=1e-05, maxiter=200, trace.iter=FALSE, na.rm=TRUE)
+    }, warning = function(w) {
+      message("  warning for ", feat)
+      medpolish(mat.smp, eps=1e-05, maxiter=200, trace.iter=FALSE, na.rm=TRUE)
+    })
     medp$row[is.na(medp$row)] <- 0
     medp$col[is.na(medp$col)] <- 0
     all <- rep(medp$overall, 384)
