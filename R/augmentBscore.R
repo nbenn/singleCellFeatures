@@ -24,6 +24,9 @@ augmentBscore.PlateData <- function(x, features="intensity",
                                     aggregate="mean") {
   matched.feats <- grep(features, getFeatureNames(x), ignore.case=TRUE,
                         value=TRUE)
+  matched.feats <- grep("_Bsco", matched.feats, value=TRUE, invert=TRUE)
+  matched.feats <- grep("_NAggr_", matched.feats, value=TRUE, invert=TRUE)
+
   if(length(matched.feats) == 0) stop("no features found.")
   aggr.fun <- get(aggregate, mode="function")
 

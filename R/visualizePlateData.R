@@ -13,6 +13,7 @@
 #' @param fun.transform An optional function used to transform the data before
 #'                      plotting. Expecting either a function object or a
 #'                      string.
+#' @param show.control  Logical, whether to mark the control wells.
 #'
 #' @return A ggplot2 plot object ready for printing.
 #'
@@ -23,7 +24,7 @@
 #'
 #' @export
 plateHeatmap <- function(plate.dat, feature, fun.aggregate="mean",
-                         fun.transform="identity") {
+                         fun.transform="identity", show.control=TRUE) {
   if(!any(class(plate.dat) == "PlateData")) {
     stop("expecting PlateData for parameter \"plate.dat\".")
   }
@@ -84,19 +85,32 @@ plateHeatmap <- function(plate.dat, feature, fun.aggregate="mean",
   frames$rows <- as.integer(frames$rows)
   frames$color <- ifelse(frames$well.type == "SIRNA", "white", "black")
 
-  heat <- ggplot(data=res) +
-    geom_raster(aes(x=cols, y=rows, fill=value)) +
-    geom_rect(data=frames, size=0.5, fill=NA, colour=frames$color,
-              aes(xmin=cols - 0.475, xmax=cols + 0.475,
-                  ymin=rows - 0.475, ymax=rows + 0.475)) +
-    scale_x_discrete(name="") +
-    scale_y_discrete(name="") +
-    theme_bw() +
-    theme(axis.ticks=element_blank()) +
-    ggtitle(feature) +
-    scale_fill_gradientn(colours = myPalette(100),
-                         name=legend.title) +
-    coord_fixed()
+  if(show.control) {
+    heat <- ggplot(data=res) +
+      geom_raster(aes(x=cols, y=rows, fill=value)) +
+      geom_rect(data=frames, size=0.5, fill=NA, colour=frames$color,
+                aes(xmin=cols - 0.475, xmax=cols + 0.475,
+                    ymin=rows - 0.475, ymax=rows + 0.475)) +
+      scale_x_discrete(name="") +
+      scale_y_discrete(name="") +
+      theme_bw() +
+      theme(axis.ticks=element_blank()) +
+      ggtitle(feature) +
+      scale_fill_gradientn(colours = myPalette(100),
+                           name=legend.title) +
+      coord_fixed()
+  } else {
+    heat <- ggplot(data=res) +
+      geom_raster(aes(x=cols, y=rows, fill=value)) +
+      scale_x_discrete(name="") +
+      scale_y_discrete(name="") +
+      theme_bw() +
+      theme(axis.ticks=element_blank()) +
+      ggtitle(feature) +
+      scale_fill_gradientn(colours = myPalette(100),
+                           name=legend.title) +
+      coord_fixed()
+  }
   return(heat)
 }
 

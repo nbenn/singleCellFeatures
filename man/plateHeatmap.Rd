@@ -5,7 +5,7 @@
 \title{Plot a plate heatmap}
 \usage{
 plateHeatmap(plate.dat, feature, fun.aggregate = "mean",
-  fun.transform = "identity")
+  fun.transform = "identity", show.control = TRUE)
 }
 \arguments{
 \item{plate.dat}{Data used to generate heatmap. Expecting a PlateData
@@ -18,8 +18,10 @@ wells for heatmap plot. Expecting a string.}
 Expecting either a function object or a string.}
 
 \item{fun.transform}{An optional function used to transform the data before
-                     plotting. Expecting either a function object or a
-                     string.}
+plotting. Expecting either a function object or a
+string.}
+
+\item{show.control}{Logical, whether to mark the control wells.}
 }
 \value{
 A ggplot2 plot object ready for printing.
