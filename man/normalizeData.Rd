@@ -2,22 +2,46 @@
 % Please edit documentation in R/normalizeData.R
 \name{normalizeData}
 \alias{normalizeData}
-\title{Combine all data in a given Data object}
+\title{Normalize Datasets}
 \usage{
 normalizeData(x, ...)
 }
 \arguments{
-\item{x}{The MatData/PlateData/WellData/ImageData object of interest.}
+\item{x}{The Data object of interest.}
+
+\item{select}{A vector of regular expressions for selecting features to
+normalize.}
+
+\item{drop}{A vector of regular expressions for dropping some of the
+previously matched features.}
+
+\item{values}{The type of features to normalize.}
+
+\item{center}{NULL of the type of features to use for centering.}
+
+\item{scale}{NULL of the type of features to use for scaling}
+
+\item{features}{For internal use only.}
 }
 \value{
-A list of data frames for the combined objects.
+A Data object of input type with normalized features added.
 }
 \description{
-Given a PlateData/WellData/ImageData object, rbind all data contained in the
-hierarchy below.
+After running aggregate, bscore or MARS augmentation functions, this
+function can be used for centering and scaling data.
 }
 \examples{
-plate    <- PlateData(PlateLocation("J101-2C"))
-plate.df <- normalizeData(plate)
+data <- PlateData(PlateLocation("J101-2C"))
+data <- augmentImageLocation(data)
+data <- augmentCordinateFeatures(data, ellipse=1, facet=NULL,
+                                 center.dist=FALSE, density=FALSE)
+data <- augmentBscore(data)
+data <- augmentMars(data)
+
+data <- augmentAggregate(data, features="_MARSed$", level="plate",
+                         func.aggr="median")
+data <- augmentAggregate(data, features="_MARSed$", level="well",
+                         neighbors=TRUE,  func.aggr="mad")
+data <- normalizeData(data)
 }
 

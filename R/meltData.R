@@ -171,7 +171,7 @@ meltData.PlateData <- function(x) {
   res.vec  <- llply(grps.vec, function(group, data) {
     regexp <- paste0("^[A-P]([1-9]|1[0-9]|2[0-4])\\.vec\\.", group, "$")
     res <- data[grep(regexp, names(data))]
-    res <- rbind.fill(res)
+    res <- do.call(rbind.fill, res)
     return(res)
   }, unlist(all[grep("^[A-P]([1-9]|1[0-9]|2[0-4])\\.vec$", names(all))],
             recursive=FALSE))
@@ -182,7 +182,7 @@ meltData.PlateData <- function(x) {
   res.mat  <- llply(grps.mat, function(group, data) {
     regexp <- paste0("^[A-P]([1-9]|1[0-9]|2[0-4])\\.mat\\.", group, "$")
     res <- data[grep(regexp, names(data))]
-    res <- rbind.fill(res)
+    res <- do.call(rbind.fill, res)
     return(res)
   }, unlist(all[grep("^[A-P]([1-9]|1[0-9]|2[0-4])\\.mat$", names(all))],
             recursive=FALSE))

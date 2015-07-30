@@ -4,9 +4,11 @@
 #' calculate their plate B-scores. 
 #'
 #' @param x         The PlateData object of interest.
-#' @param features  A regular expression used for selecting the features to
-#'                  include.
-#' @param aggregate The function used to aggregate data within wells.
+#' @param features  A (list) of regular expressions used for selecting the
+#'                  features to include.
+#' @param drop      A (list) of regular expressions used for removing features
+#'                  from the previously compiled list.
+#' @param func.aggr The function used to aggregate data within wells.
 #' 
 #' @return An augmented version of the input object.
 #' 
@@ -20,21 +22,28 @@ augmentBscore <- function(x, ...) {
 }
 
 #' @export
-augmentBscore.PlateData <- function(x, features="intensity",
-                                    aggregate="mean") {
-  matched.feats <- grep(features, getFeatureNames(x), ignore.case=TRUE,
-                        value=TRUE)
-  matched.feats <- grep("_Bsco", matched.feats, value=TRUE, invert=TRUE)
-  matched.feats <- grep("_NAggr_", matched.feats, value=TRUE, invert=TRUE)
+augmentBscore.PlateData <- function(x,
+                                    features=c(".AreaShape_", ".Intensity_",
+                                               ".Texture_"),
+                                    drop=c("^Bacteria.", "^BlobBacteria."),
+                                    func.aggr="mean") {
+
+  matched.feats <- unique(unlist(lapply(features, grep, getFeatureNames(x),
+                                        value=TRUE)))
+  drop.ext      <- c(drop, "_Bsco", "_Aggreg_", "MARSed")
+  drop.ind      <- unique(unlist(lapply(drop.ext, grep, matched.feats)))
+  if(length(drop.ind) > 0) matched.feats <- matched.feats[-drop.ind]
 
   if(length(matched.feats) == 0) stop("no features found.")
-  aggr.fun <- get(aggregate, mode="function")
+  aggr.fun <- get(func.aggr, mode="function")
 
   progress.bar <- getOption("singleCellFeatures.progressBars")
   if(progress.bar != "none") {
     message("aggregating features to well level:")
   }
-  dat.aggr <- llply(x$data, function(well, feat, fun) {
+
+  dat.aggr <- extractFeatures(x, features=matched.feats)
+  dat.aggr <- llply(dat.aggr$data, function(well, feat, fun) {
     res <- lapply(feat, function(feat, dat, fun) {
       res <- lapply(dat, function(type, f) {
         res <- lapply(type, function(grp, f) {

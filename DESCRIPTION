@@ -8,7 +8,7 @@ Maintainer: Nicolas Bennett <nbennett@ethz.ch>
 Depends: Matrix, foreach, doParallel, stringi, yaml, plyr,
   lpSolveAPI (>= 5.5.0.14), glmnet, ggplot2, RColorBrewer, R.matlab,
   R (>= 3.2.0)
-Imports: sm, fields
+Imports: sm, fields, earth
 Suggests: knitr
 SystemRequirements: pigz
 Description: More about what it does (maybe more than one line)
