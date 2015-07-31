@@ -257,7 +257,27 @@ augmentCordinateFeatures.ImageData <- function(x, ellipse=NULL, facet=NULL,
         length.original <- ncol(group)
         length.center   <- length(index1.x)
         length.shifted  <- length(index2.x)
-        if((length.center > 0 | length.shifted > 0) & nrow(group) > 0) {
+        if((length.center > 0 | length.shifted > 0) & nrow(group) == 0) {
+          # in case no rows are present, add features to colnames anyway
+          if(length.center > 0 & length.shifted > 0) {
+            nmes <- c(
+              colnames(group),
+              gsub("Center_X$", "In_Ellipse_Image", colnames(group)[index1.x]),
+              gsub("Shifted_X$", "In_Ellipse_Well", colnames(group)[index2.x]))
+            dims <- c(0, length.original + length.center + length.shifted)
+          } else if(length.center > 0) {
+            nmes <- c(colnames(group), gsub("Center_X$", "In_Ellipse_Image",
+                                            colnames(group)[index1.x]))
+            dims <- c(0, length.original + length.center)
+          } else if(length.shifted > 0) {
+            nmes <- c(colnames(group), gsub("Shifted_X$", "In_Ellipse_Well",
+                                            colnames(group)[index2.x]))
+            dims <- c(0, length.original + length.shifted)
+          }
+          dim(group)      <- dims
+          colnames(group) <- nmes
+          return(group)
+        } else if((length.center > 0 | length.shifted > 0) & nrow(group) > 0) {
           if(length.center > 0) {
             # center features
             feat1.x <- group[,index1.x, drop=FALSE]
@@ -334,7 +354,31 @@ augmentCordinateFeatures.ImageData <- function(x, ellipse=NULL, facet=NULL,
         }
         length.original <- ncol(group)
         length.new      <- length(index.x)
-        if(length.new > 0 & nrow(group) > 0) {
+        if(length.new > 0 & nrow(group) == 0) {
+          # in case no rows are present, add features to colnames anyway
+          if(shifted) {
+            nmes <- c(
+              colnames(group),
+              gsub("Center_X$", "Facet_X_Image", colnames(group)[index.x]),
+              gsub("Center_Y$", "Facet_Y_Image", colnames(group)[index.y]),
+              gsub("Center_X$", "Facet_X_Well", colnames(group)[index.x]),
+              gsub("Center_Y$", "Facet_Y_Well", colnames(group)[index.y]),
+              gsub("Center_X$", "Facet_Type", colnames(group)[index.x]),
+              gsub("Center_X$", "Facet_Border", colnames(group)[index.x]))
+            dims <- c(0, length.original + 6 * length.new)
+          } else {
+            nmes <- c(
+              colnames(group),
+              gsub("Center_X$", "Facet_X_Image", colnames(group)[index.x]),
+              gsub("Center_Y$", "Facet_Y_Image", colnames(group)[index.y]),
+              gsub("Center_X$", "Facet_Type", colnames(group)[index.x]),
+              gsub("Center_X$", "Facet_Border", colnames(group)[index.x]))
+            dims <- c(0, length.original + 4 * length.new)
+          }
+          dim(group)      <- dims
+          colnames(group) <- nmes
+          return(group)
+        } else if(length.new > 0 & nrow(group) > 0) {
           feat.x <- group[,index.x, drop=FALSE]
           feat.y <- group[,index.y, drop=FALSE]
           facet.x <- sapply(1:ncol(feat.x), facetCalc, feat.x, facet.size[1])
@@ -391,7 +435,30 @@ augmentCordinateFeatures.ImageData <- function(x, ellipse=NULL, facet=NULL,
         length.original <- ncol(group)
         length.center   <- length(index1.x)
         length.shifted  <- length(index2.x)
-        if((length.center > 0 | length.shifted > 0) & nrow(group) > 0) {
+        if((length.center > 0 | length.shifted > 0) & nrow(group) == 0) {
+          # in case no rows are present, add features to colnames anyway
+          if(length.center > 0 & length.shifted > 0) {
+            nmes <- c(colnames(group),
+                      gsub("Center_X$", "Dist_Center_Image",
+                           colnames(group)[index1.x]),
+                      gsub("Shifted_X$", "Dist_Center_Well",
+                           colnames(group)[index2.x]))
+            dims <- c(0, length.original + length.center + length.shifted)
+          } else if(length.center > 0) {
+            nmes <- c(colnames(group),
+                      gsub("Center_X$", "Dist_Center_Image",
+                           colnames(group)[index1.x]))
+            dims <- c(0, length.original + length.center)
+          } else if(length.shifted > 0) {
+            nmes <- c(colnames(group),
+                      gsub("Shifted_X$", "Dist_Center_Well",
+                           colnames(group)[index2.x]))
+            dims <- c(0, length.original + length.shifted)
+          }
+          dim(group)      <- dims
+          colnames(group) <- nmes
+          return(group)
+        } else if((length.center > 0 | length.shifted > 0) & nrow(group) > 0) {
           if(length.center > 0) {
             feat1.x <- group[,index1.x, drop=FALSE]
             feat1.y <- group[,index1.y, drop=FALSE]
@@ -447,6 +514,15 @@ augmentCordinateFeatures.ImageData <- function(x, ellipse=NULL, facet=NULL,
         length.original <- ncol(group)
         length.center   <- length(index.x)
         if(length.center > 0 & nrow(group) > 0) {
+          # in case no rows are present, add features to colnames anyway
+          nmes <- c(colnames(group),
+                    gsub("Center_X$", "Kern_Dens_Image",
+                         colnames(group)[index.x]))
+          dims <- c(0, length.original + length.center)
+          dim(group)      <- dims
+          colnames(group) <- nmes
+          return(group)
+        } else if(length.center > 0 & nrow(group) > 0) {
           feat.x <- group[,index.x, drop=FALSE]
           feat.y <- group[,index.y, drop=FALSE]
           dens <- sapply(1:ncol(feat.x), densCalc, feat.x, feat.y)

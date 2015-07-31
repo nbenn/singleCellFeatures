@@ -58,7 +58,16 @@ augmentImageLocation.ImageData <- function(x) {
       }
       length.original <- ncol(group)
       length.new      <- length(index.x)
-      if(nrow(group) > 0 & length.new > 0) {
+      if(nrow(group) == 0 & length.new > 0) {
+        # in case no rows are present, add features to colnames anyway
+        nmes <- c(colnames(group),
+                  gsub("Center_X$", "Shifted_X", colnames(group)[index.x]),
+                  gsub("Center_Y$", "Shifted_Y", colnames(group)[index.y]))
+        dims <- c(0, length.original + 2 * length.new)
+        dim(group)      <- dims
+        colnames(group) <- nmes
+        return(group)
+      } else if(nrow(group) > 0 & length.new > 0) {
         feat.x <- group[,index.x, drop=FALSE]
         feat.y <- group[,index.y, drop=FALSE]
         shifts <- cbind(rep(c(0, 1402, 2804), 3),
