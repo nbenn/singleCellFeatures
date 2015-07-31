@@ -119,11 +119,11 @@ normalizeData.ImageData <- function(x,
   ncol <- nrow(features$values)
   if(!is.null(res)) {
     nrow <- length(res) / ncol
-    dim(res) <- c(nrow, ncol)
   } else {
-    res <- numeric()
-    dim(res) <- c(0, ncol)
+    res  <- numeric()
+    nrow <- 0
   }
+  dim(res) <- c(nrow, ncol)
   colnames(res) <- paste0(features$names, "_Normed")
   x$data.mat$Norm <- res
   return(x)

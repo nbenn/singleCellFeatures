@@ -56,11 +56,12 @@ augmentMars.PlateData <- function(x,
   molten <- moveFeatures(molten, from="_Bsco", to="Cells")
 
   na.col <- plyr::alply(molten, 2, function(col) return(any(is.na(col))))
+  na.col <- unlist(na.col)
   if(sum(na.col) > 0) {
     message("removing ", sum(na.col), " columns due to many NAs:")
     plyr::l_ply(names(molten)[na.col], function(name) message("  ", name))
     matched.feats <- matched.feats[-match(names(molten)[na.col],
-                                          matched.feats)]
+                                          matched.feats, nomatch=0)]
     molten <- molten[, !na.col]
   }
 
@@ -94,16 +95,25 @@ augmentMars.PlateData <- function(x,
   newdat  <- split(newdat, molten$Well.Name)
   img.ind <- split(molten$Image.Index, molten$Well.Name)
 
-  for(well in unique(molten$Well.Name)) {
-    dat.well <- as.matrix(newdat[[well]])
+  for(well in sapply(x$data, getWellName)) {
     ncol <- length(matched.feats)
-    nrow <- length(dat.well) / ncol
+    if(!is.null(newdat[[well]])) {
+      dat.well <- as.matrix(newdat[[well]])
+      nrow <- length(dat.well) / ncol
+    } else {
+      dat.well <- numeric()
+      nrow <- 0
+    }
     dim(dat.well) <- c(nrow, ncol)
     colnames(dat.well) <- paste0(matched.feats, "_MARSed")
     index <- img.ind[[well]]
-    for(img in unique(molten$Image.Index)) {
-      x$data[[well]]$data[[img]]$data.mat$MARS <- dat.well[index == img,,
-                                                           drop=FALSE]
+    for(img in 1:length(x$data[[well]]$data)) {
+      if(!is.null(index)) {
+        x$data[[well]]$data[[img]]$data.mat$MARS <- dat.well[index == img,,
+                                                             drop=FALSE]
+      } else {
+        x$data[[well]]$data[[img]]$data.mat$MARS <- dat.well
+      }
     }
   }
   return(x)
