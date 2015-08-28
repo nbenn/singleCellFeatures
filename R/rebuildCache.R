@@ -8,10 +8,10 @@
 #'                 If not specified, the /Errors directory is checked and if it
 #'                 does not exist, the missing features are detected and
 #'                 downloaded.
-#' @param names    An optional argument for the name of the newly added feature.
-#'                 If not specified, the filename (without extension) will be
-#'                 used. It is ignored when the missing features are detected
-#'                 automatically.
+#' @param names    An optional argument for the name of the newly added
+#'                 feature. If not specified, the filename (without extension)
+#'                 will be used. It is ignored when the missing features are
+#'                 detected automatically.
 #' 
 #' @return The updated MatData object. The updated cache file is saved to its
 #'         corresponding location.

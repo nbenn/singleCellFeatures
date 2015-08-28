@@ -114,9 +114,9 @@ updateDatabasePlate <- function() {
 #' Generate the wellDatabase{Pathogen} objects
 #' 
 #' For each specified pathogen, generates the corresponding 
-#' wellDatabase{Pathogen} object (holding well type, target gene ID and name for
-#' each well) using genome aggregate files, as well as a kinome aggregate file
-#' which contains additional information of control types which are not
+#' wellDatabase{Pathogen} object (holding well type, target gene ID and name
+#' for each well) using genome aggregate files, as well as a kinome aggregate
+#' file which contains additional information of control types which are not
 #' currently available for genome plates.
 #'
 #' @param pathogens An optional list of pathogen names to have their

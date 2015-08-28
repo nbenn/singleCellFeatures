@@ -37,7 +37,8 @@ An ImageData object: a list with slots for plate barcode, well
 }
 \description{
 Due to performance requirements (when a whole plate is imported, 3456
-ImageData objects are created), there are two ways this function is executed:
+ImageData objects are created), there are two ways this function is
+executed:
 Either the data is supplied (at leas one of vec, mat, lst is not NULL), in
 which case barcode is expected to be a string, index the linear plate index
 and n.img in c(6, 9), the number of images per well. Nothing is checked to

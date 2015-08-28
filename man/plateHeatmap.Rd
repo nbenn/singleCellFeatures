@@ -5,7 +5,8 @@
 \title{Plot a plate heatmap}
 \usage{
 plateHeatmap(plate.dat, feature, fun.aggregate = "mean",
-  fun.transform = "identity", show.control = TRUE)
+  fun.transform = "identity", show.control = TRUE, colors = brewer.pal(9,
+  "Reds")[3:9])
 }
 \arguments{
 \item{plate.dat}{Data used to generate heatmap. Expecting a PlateData
@@ -22,6 +23,9 @@ plotting. Expecting either a function object or a
 string.}
 
 \item{show.control}{Logical, whether to mark the control wells.}
+
+\item{colors}{A vector of colors that is interpolated for the
+                     gradient scale.}
 }
 \value{
 A ggplot2 plot object ready for printing.

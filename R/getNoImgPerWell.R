@@ -1,7 +1,7 @@
 #' Get the number of images per Well
 #'
-#' Given a Data (MatData/ImageData/WellData/PlateData) object, return the number
-#' of images per well (either 6 or 9).
+#' Given a Data (MatData/ImageData/WellData/PlateData) object, return the
+#' number of images per well (either 6 or 9).
 #'
 #' @param data A Data (MatData/ImageData/WellData/PlateData) object
 #' 

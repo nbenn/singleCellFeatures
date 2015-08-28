@@ -15,9 +15,9 @@ The path/filename of the single cell data cache of
         PlateLocation/WellLocation object (as a string)
 }
 \description{
-Upon downloading from openBIS and importin to R, all single cell data
+Upon downloading from openBIS and importing to R, all single cell data
 associated with a PlateLocation/WellLocation is cached in an .rds file. This
-function gets the filepath of this cache file.
+function retrieves the filepath of this cache file.
 }
 \examples{
 plate <- PlateLocation("J101-2C")

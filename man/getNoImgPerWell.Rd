@@ -13,8 +13,8 @@ getNoImgPerWell(data)
 The number of images per well (either 6 or 9).
 }
 \description{
-Given a Data (MatData/ImageData/WellData/PlateData) object, return the number
-of images per well (either 6 or 9).
+Given a Data (MatData/ImageData/WellData/PlateData) object, return the
+number of images per well (either 6 or 9).
 }
 \examples{
 plate <- PlateData()PlateLocation("J101-2C"))

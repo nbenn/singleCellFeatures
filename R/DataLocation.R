@@ -25,10 +25,10 @@ WellLocation <- function(plate, row, col) {
   data(plateDatabase, envir=environment())
   match <- plate.database[plate.database$Barcode == plate,]
   if(nrow(match) != 1) stop("could not find the specified plate")
-  result <- list(plate = plate, row=row, column=col, index=ind,
+  result <- list(plate=plate, row=row, column=col, index=ind,
                  space=match$Space, group=match$Group,
                  experiment=match$Experiment)
-  return(structure(result, class = c("WellLocation", "DataLocation")))
+  return(structure(result, class=c("WellLocation", "DataLocation")))
 }
 
 #' Constructor for PlateLocation objects
@@ -50,7 +50,7 @@ PlateLocation <- function(barcode) {
   data(plateDatabase, envir=environment())
   match <- plate.database[plate.database$Barcode == barcode,]
   if(nrow(match) != 1) stop("could not find the specified plate")
-  result <- list(plate = barcode, space=match$Space, group=match$Group,
+  result <- list(plate=barcode, space=match$Space, group=match$Group,
                  experiment=match$Experiment)
-  return(structure(result, class = c("PlateLocation", "DataLocation")))
+  return(structure(result, class=c("PlateLocation", "DataLocation")))
 }

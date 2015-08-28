@@ -200,7 +200,7 @@ PlateAggregate <- function(dl) {
   patho.name <- getPathogen(dl)
   # get path info
   config <- configGet()
-  # get genome and kinome aggreagtes
+  # get aggreagtes
   aggregate.name <- list.files(
     path=paste0(config$dataStorage$metaDir, "/", "Aggregates"),
     pattern=paste0(patho.name, "report_.*\\.csv"),
@@ -215,7 +215,7 @@ PlateAggregate <- function(dl) {
   # drop all except the dl of interest
   aggregate.file <- aggregate.file[aggregate.file$Barcode == getBarcode(dl),]
   if (nrow(aggregate.file) != 384) {
-    warning("found genome aggregate information on ", nrow(aggregate.file),
+    warning("found aggregate information on ", nrow(aggregate.file),
             " wells instead of 384.")
   }
   if(nrow(aggregate.file) > 0) {

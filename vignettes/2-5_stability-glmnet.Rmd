@@ -80,7 +80,7 @@ print(xtable(head(table1, n=50), digits=0), size="footnotesize", comment=FALSE)
 \elandscape
 \newpage
 
-Stability analysis on *MTOR* (Well H6) versus *SCRAMBLED* (Well H2) is performed with 100 resampling iterations, each run on 70% of the data. The top 20 coefficients of each iteration are selected and their frequencies are tabulated. K1 consists of merged \*-2C wells, K2 corresponds to \*-2D and DU encompasses all 8 well pairs. Models were fit with glmnet, and default parameters (elastic net penalty: $$\alpha = 0.5$$).
+Stability analysis on *MTOR* (Well H6) versus *SCRAMBLED* (Well H2) is performed with 100 resampling iterations, each run on 70% of the data. The top 20 coefficients of each iteration are selected and their frequencies are tabulated. K1 consists of merged \*-2C wells, K2 corresponds to \*-2D and DU encompasses all 8 well pairs. Models were fit with glmnet, and default parameters (elastic net penalty: $\alpha = 0.5$).
 
 ```{r, loadData-rand, cache=TRUE, collapse=TRUE}
 barcodes <- sapply(findWells(contents="MTOR", experiment="brucella-du-k[12]"),

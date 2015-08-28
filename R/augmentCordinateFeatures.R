@@ -513,7 +513,7 @@ augmentCordinateFeatures.ImageData <- function(x, ellipse=NULL, facet=NULL,
 
         length.original <- ncol(group)
         length.center   <- length(index.x)
-        if(length.center > 0 & nrow(group) > 0) {
+        if(length.center > 0 & nrow(group) == 0) {
           # in case no rows are present, add features to colnames anyway
           nmes <- c(colnames(group),
                     gsub("Center_X$", "Kern_Dens_Image",

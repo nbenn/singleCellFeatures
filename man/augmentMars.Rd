@@ -25,6 +25,9 @@ medpolish estimated row/column effects.
 }
 \examples{
 data <- PlateData(PlateLocation("J101-2C"))
-aug  <- augmentMars(data)
+data <- augmentImageLocation(data)
+data <- augmentCordinateFeatures(data, 1, NULL, FALSE, FALSE)
+data <- augmentBscore(data)
+data <- augmentMars(data)
 }
 

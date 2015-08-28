@@ -9,8 +9,7 @@ getSingleCellData(locations, select.features = NULL, drop.features = NULL,
 }
 \arguments{
 \item{locations}{A list of PlateLocation/WellLocation objects for
-which
-the data is to be returned.}
+which the data is to be returned.}
 
 \item{select.features}{A vector of strings that are matched with features to
 be kept.}

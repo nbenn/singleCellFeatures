@@ -85,7 +85,6 @@ normalizeData.ImageData <- function(x,
   if(!all(names(features) == c("names", "values", "center", "scale"))) {
     stop("features is incorrectly formatted.")
   }
-
   if(!is.null(features$center) & !is.null(features$scale)) {
     indices <- cbind(features$values, features$center, features$scale)
     res <- apply(indices, 1, function(i, dat) {
@@ -169,7 +168,7 @@ findFeatureHelper <- function(data, select, drop, values, center, scale) {
 
   features <- intersect(match.val, intersection)
   if(length(features) == 0) stop("no features left.")
-  res.val <- unlist(lapply(paste0("^", features), grep, all.val, value=TRUE))
+  res.val <- unlist(lapply(paste0("^", features), grep, match.val, value=TRUE))
   if(!is.null(center)) {
     res.cen <- unlist(lapply(paste0("^", features), grep, all.cen, value=TRUE))
   } else res.cen <- NULL

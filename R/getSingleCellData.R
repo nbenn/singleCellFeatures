@@ -4,8 +4,7 @@
 #' multiple plates.
 #'
 #' @param locations       A list of PlateLocation/WellLocation objects for
-#'                        which
-#'                        the data is to be returned.
+#'                        which the data is to be returned.
 #' @param select.features A vector of strings that are matched with features to
 #'                        be kept.
 #' @param drop.features   A vector of strings that are matched with features to

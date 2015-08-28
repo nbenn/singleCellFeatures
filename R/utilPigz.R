@@ -41,34 +41,10 @@ readRDSMC <- function(file) {
   con <- pipe(paste0("pigz -d -k -c ", file))
   object <- tryCatch({
     readRDS(file = con)
-  },
-  error = function(err) {
+  }, error = function(err) {
     stop("could not read file\n", file, ":\n", err)
-  },
-  finally = {
+  }, finally = {
     if(exists("con")) close(con)
   })
   return(object)
-}
-
-#' Get the number of available cores
-#' 
-#' In case, the package is used in an LSF environment, detectCores() will
-#' report the number of physical cores insted of the numer allocated by LSF.
-#'
-#' @return The number of available cores.
-#'
-#' @examples
-#' n.cores <- getNumCores()
-
-#' @export
-getNumCores <- function() {
-  n.cores <- as.integer(Sys.getenv("LSB_DJOB_NUMPROC"))
-  if(is.na(n.cores)) {
-    n.cores <- detectCores()
-  }
-  if(n.cores > detectCores() | n.cores < 1) {
-    stop("illegal number of cores (", n.cores, ") specified.")
-  }
-  return(n.cores)
 }

@@ -1,9 +1,9 @@
 #' Get path/filename of a PlateLocation/WellLocation object single cell data
 #' cache
 #'
-#' Upon downloading from openBIS and importin to R, all single cell data
+#' Upon downloading from openBIS and importing to R, all single cell data
 #' associated with a PlateLocation/WellLocation is cached in an .rds file. This
-#' function gets the filepath of this cache file.
+#' function retrieves the filepath of this cache file.
 #'
 #' @param x PlateLocation/WellLocation object
 #' 

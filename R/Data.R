@@ -143,7 +143,7 @@ readMatFeatureHelper <- function(path) {
   readFeatureFile <- function(filepath) {
     data <- tryCatch({
       # nesting of list contains no information
-      readMat(filepath)[[1]][[1]][[1]][[1]]
+      R.matlab::readMat(filepath)[[1]][[1]][[1]][[1]]
     },
     error = function(err) {
       # catch errors s.t. the rest of the batch import can continue
@@ -413,8 +413,8 @@ PlateData <- function(plate, select=NULL, drop=NULL, data=NULL) {
     message("building ImageData objects:")
   }
   # tot.nimgs ImageData objects are built from the complete plate data
-  data$data <- llply(1:tot.nimgs, function(ind, data, name, n.imgs, quants, 
-    counts) {
+  data$data <- plyr::llply(1:tot.nimgs, function(ind, data, name,
+                                                 n.imgs, quants, counts) {
     if(length(data$vec) > 0) {
       vec <- lapply(data$vec, function(group, ind) {
         return(data.frame(lapply(group, function(feature, i) {
@@ -565,7 +565,8 @@ WellData <- function(well, data=NULL) {
 #' Constructor for ImageData objects
 #' 
 #' Due to performance requirements (when a whole plate is imported, 3456
-#' ImageData objects are created), there are two ways this function is executed:
+#' ImageData objects are created), there are two ways this function is
+#' executed:
 #' Either the data is supplied (at leas one of vec, mat, lst is not NULL), in
 #' which case barcode is expected to be a string, index the linear plate index
 #' and n.img in c(6, 9), the number of images per well. Nothing is checked to

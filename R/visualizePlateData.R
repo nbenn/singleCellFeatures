@@ -14,6 +14,8 @@
 #'                      plotting. Expecting either a function object or a
 #'                      string.
 #' @param show.control  Logical, whether to mark the control wells.
+#' @param colors        A vector of colors that is interpolated for the 
+#'                      gradient scale.
 #'
 #' @return A ggplot2 plot object ready for printing.
 #'
@@ -24,7 +26,8 @@
 #'
 #' @export
 plateHeatmap <- function(plate.dat, feature, fun.aggregate="mean",
-                         fun.transform="identity", show.control=TRUE) {
+                         fun.transform="identity", show.control=TRUE,
+                         colors=brewer.pal(9, "Reds")[3:9]) {
   if(!any(class(plate.dat) == "PlateData")) {
     stop("expecting PlateData for parameter \"plate.dat\".")
   }
@@ -70,7 +73,7 @@ plateHeatmap <- function(plate.dat, feature, fun.aggregate="mean",
   res$rows <- factor(res$rows, levels=rev(LETTERS[1:16]), ordered=TRUE)
   res$cols <- factor(res$cols, levels=1:24, ordered=TRUE)
 
-  myPalette <- colorRampPalette(brewer.pal(9, "Reds")[3:9], space="Lab")
+  myPalette <- colorRampPalette(colors, space="Lab")
   if(as.character(substitute(fun.transform)) == "identity") {
     legend.title <- as.character(substitute(fun.aggregate))
   } else {
@@ -83,14 +86,14 @@ plateHeatmap <- function(plate.dat, feature, fun.aggregate="mean",
   names(frames) <- c("well.type", "cols", "rows")
   frames$cols <- as.integer(frames$cols)
   frames$rows <- as.integer(frames$rows)
-  frames$color <- ifelse(frames$well.type == "SIRNA", "white", "black")
+  frames$color <- ifelse(frames$well.type == "SIRNA", "white", gray(0.3))
 
   if(show.control) {
     heat <- ggplot(data=res) +
-      geom_raster(aes(x=cols, y=rows, fill=value)) +
+      geom_tile(aes(x=cols, y=rows, fill=value)) +
       geom_rect(data=frames, size=0.5, fill=NA, colour=frames$color,
-                aes(xmin=cols - 0.475, xmax=cols + 0.475,
-                    ymin=rows - 0.475, ymax=rows + 0.475)) +
+                aes(xmin=cols - 0.48, xmax=cols + 0.48,
+                    ymin=rows - 0.48, ymax=rows + 0.48)) +
       scale_x_discrete(name="") +
       scale_y_discrete(name="") +
       theme_bw() +
@@ -101,7 +104,7 @@ plateHeatmap <- function(plate.dat, feature, fun.aggregate="mean",
       coord_fixed()
   } else {
     heat <- ggplot(data=res) +
-      geom_raster(aes(x=cols, y=rows, fill=value)) +
+      geom_tile(aes(x=cols, y=rows, fill=value)) +
       scale_x_discrete(name="") +
       scale_y_discrete(name="") +
       theme_bw() +
