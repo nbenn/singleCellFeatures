@@ -5,6 +5,9 @@
 #' medpolish estimated row/column effects.
 #'
 #' @param x         The PlateData object of interest.
+#' @param bscore    Whether to include B-scores (logical).
+#' @param model     A (list) of regular expressions, specifying the features
+#'                  used for MARS modeling.
 #' @param features  A (list) of regular expressions used for selecting the
 #'                  features to include.
 #' @param drop      A (list) of regular expressions used for removing features
@@ -26,6 +29,9 @@ augmentMars <- function(x, ...) {
 
 #' @export
 augmentMars.PlateData <- function(x,
+                                  bscore=TRUE,
+                                  model=c("^Nuclei.Location_In_Ellipse_Well$",
+                                         "^Nuclei.Location_In_Ellipse_Image$"),
                                   features=c(".AreaShape_", ".Intensity_",
                                              ".Texture_"),
                                   drop=c("^Bacteria.", "^BlobBacteria.")) {
@@ -40,23 +46,29 @@ augmentMars.PlateData <- function(x,
 
   if(length(matched.feats) == 0) stop("no features found.")
 
-  aug.loc <- c("Nuclei.Location_In_Ellipse_Well",
-               "Nuclei.Location_In_Ellipse_Image")
-  aug.bsc <- c(paste0(matched.feats, "_BscoAll"),
-               paste0(matched.feats, "_BscoRow"),
-               paste0(matched.feats, "_BscoCol"))
-  if(!all(aug.loc %in% getFeatureNames(x))) {
+  mod.feats <- unique(unlist(lapply(model, function(feat, feats) {
+    res <- grep(feat, feats, value=TRUE)
+    if(length(res) < 1) stop(paste0("could not find feature ", feature))
+    return(res)
+  }, getFeatureNames(x))))
+  if(!all(mod.feats %in% getFeatureNames(x))) {
     stop("could not find all needed location features. Please run\n",
-         "augmentImageLocation/augmentCordinateFeatures first.")
+         "augmentImageLocation/augmentCordinateFeatures first and or\n",
+         "choose model features differently.")
   }
-  if(!all(aug.bsc %in% getFeatureNames(x))) {
-    stop("could not find all needed bscore features. Please run\n",
-         "augmentBscore first.")
+  if(bscore) {
+    aug.bsc <- c(paste0(matched.feats, "_BscoAll"),
+                 paste0(matched.feats, "_BscoRow"),
+                 paste0(matched.feats, "_BscoCol"))
+    if(!all(aug.bsc %in% getFeatureNames(x))) {
+      stop("could not find all needed bscore features. Please run\n",
+           "augmentBscore first.")
+    }
   }
 
-  molten <- extractFeatures(x, features=c(matched.feats, aug.loc, aug.bsc))
+  molten <- extractFeatures(x, features=c(matched.feats, mod.feats, aug.bsc))
   molten <- meltData(molten)
-  molten <- moveFeatures(molten, from="_Bsco", to="Cells")
+  if(bscore) molten <- moveFeatures(molten, from="_Bsco", to="Cells")
 
   na.col <- plyr::alply(molten, 2, function(col) return(any(is.na(col))))
   na.col <- unlist(na.col)
@@ -77,16 +89,21 @@ augmentMars.PlateData <- function(x,
     matched.feats <- matched.feats[zero.var]
   }
 
-  message("normalizing ", length(matched.feats), " features:")
-  newdat <- plyr::llply(matched.feats, function(feat, data) {
-    bscore   <- paste0(feat, c("_BscoRow", "_BscoCol", "_BscoAll"))
-    form <- formula(paste0(feat, " ~ ",
-                           "Nuclei.Location_In_Ellipse_Well + ",
-                           "Nuclei.Location_In_Ellipse_Image + ",
-                           paste0(bscore, collapse=" + ")))
+  message("normalizing ", length(matched.feats), " features,")
+  if(bscore) message("model terms include bscoring and:")
+  else message("model terms include:")
+  plyr::l_ply(mod.feats, function(x) message("  ", x))
+  newdat <- plyr::llply(matched.feats, function(feat, data, do.bsc, model) {
+    if(do.bsc) {
+      bscore <- paste0(feat, c("_BscoRow", "_BscoCol", "_BscoAll"))
+      form <- formula(paste0(feat, " ~ ", paste0(model, collapse=" + "),
+                             " + ", paste0(bscore, collapse=" + ")))
+    } else {
+      form <- formula(paste0(feat, " ~ ", paste0(model, collapse=" + ")))
+    }
     model <- earth::earth(formula=form, data=data)
     return(model$residuals)
-  }, molten, .progress=progress.bar)
+  }, molten, bscore, mod.feats, .progress=progress.bar)
 
   newdat <- do.call(cbind, newdat)
   newdat <- as.data.frame(newdat)

@@ -9,6 +9,11 @@ augmentMars(x, ...)
 \arguments{
 \item{x}{The PlateData object of interest.}
 
+\item{bscore}{Whether to include B-scores (logical).}
+
+\item{model}{A (list) of regular expressions, specifying the features
+used for MARS modeling.}
+
 \item{features}{A (list) of regular expressions used for selecting the
 features to include.}
 
