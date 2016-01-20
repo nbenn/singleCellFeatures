@@ -180,6 +180,59 @@ augmentAggregate.PlateData <- function(x, level="well", neighbors=FALSE,
 }
 
 #' @export
+augmentAggregate.WellData <- function(x, features=c(".AreaShape_",
+                                                    ".Intensity_",
+                                                    ".Texture_"),
+                                      drop=c("^Bacteria.", "^BlobBacteria."),
+                                      func.aggr="median") {
+
+  fun <- get(func.aggr, mode="function")
+  matched.feats <- unique(unlist(lapply(features, grep, getFeatureNames(x),
+                                        value=TRUE)))
+  drop.ext      <- c(drop, "_Bsco", "_Aggreg_")
+  drop.ind      <- unique(unlist(lapply(drop.ext, grep, matched.feats)))
+  if(length(drop.ind) > 0) matched.feats <- matched.feats[-drop.ind]
+
+  if(length(matched.feats) == 0) stop("no features found.")
+  molten <- extractFeatures(x, features=matched.feats)
+
+  molten <- lapply(matched.feats, function(feat, dat) {
+    res <- lapply(dat, function(type, f) {
+      res <- lapply(type, function(grp, f) {
+        return(grp[[f]])
+      }, f)
+      not.null <- which(!sapply(res, is.null))[1]
+      return(res[[not.null]])
+    }, feat)
+    not.null <- which(!sapply(res, is.null))[1]
+    return(res[[not.null]])
+  }, meltData(molten))
+  names(molten) <- matched.feats
+
+  if("na.rm" %in% names(formals(fun))) {
+    res <- lapply(molten, function(feat, fun) {
+      return(fun(feat, na.rm=TRUE))
+    }, fun)
+  } else {
+    res <- lapply(molten, function(feat, fun) {
+      return(fun(feat))
+    }, fun)
+  }
+  names(res) <- paste0(names(molten), paste0("_Aggreg_W_", func.aggr))
+  res <- data.frame(res)
+
+  for(i in 1:length(x$data)) {
+    old <- x$data[[i]]$data.vec$Aggregate
+    if(is.null(old)) {
+      x$data[[i]]$data.vec$Aggregate <- res
+    } else {
+      x$data[[i]]$data.vec$Aggregate <- cbind(old, res)
+    }
+  }
+  return(x)
+}
+
+#' @export
 augmentAggregate.default <- function(x, ...) {
   stop("can only deal with PlateData objects.")
 }

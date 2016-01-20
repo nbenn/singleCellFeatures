@@ -426,14 +426,18 @@ PlateData <- function(plate, select=NULL, drop=NULL, data=NULL) {
     }
     if(length(data$mat) > 0) {
       mat <- lapply(data$mat, function(group, ind) {
+        names  <- names(group)
         n.rows <- length(group[[1]][[ind]])
-        grp <- vapply(group, function(feature, i) {
-          return(unlist(feature[i]))
-        }, double(n.rows), ind)
-        names <- colnames(grp)
-        if(is.null(names)) names <- names(grp)
         n.cols <- length(names)
-        dim(grp) <- c(n.rows, n.cols)
+        if(n.rows > 0) {
+          grp <- vapply(group, function(feature, i) {
+            return(unlist(feature[i]))
+          }, double(n.rows), ind)
+          dim(grp) <- c(n.rows, n.cols)
+        } else {
+          grp <- matrix(nrow=0, ncol=n.cols)
+          mode(grp) <- "numeric"
+        }
         colnames(grp) <- names
         rownames(grp) <- NULL
         return(grp)

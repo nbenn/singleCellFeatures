@@ -68,7 +68,23 @@ augmentMars.PlateData <- function(x,
 
   molten <- extractFeatures(x, features=c(matched.feats, mod.feats, aug.bsc))
   molten <- meltData(molten)
-  if(bscore) molten <- moveFeatures(molten, from="_Bsco", to="Cells")
+
+  if(bscore) {
+    target.node <- lapply(names(molten$mat), function(grp, all, feat) {
+      if(feat %in% names(all[[grp]])) return(grp)
+      else return(NULL)
+    }, molten$mat, mod.feats[1])
+    target.node <- target.node[[which(!sapply(target.node, is.null))[1]]]
+    if(!all(mod.feats %in% names(molten$mat[[target.node]]))) {
+      stop("not all model features in same node.")
+    }
+    if(!all(matched.feats %in% names(molten$mat[[target.node]]))) {
+      missing <- matched.feats[
+        !matched.feats %in% names(molten$mat[[target.node]])]
+      missing <- c("_Bsco", paste0("^", missing, "$"))
+    } else missing <- "_Bsco"
+    molten <- moveFeatures(molten, from=missing, to=target.node)
+  }
 
   na.col <- plyr::alply(molten, 2, function(col) return(any(is.na(col))))
   na.col <- unlist(na.col)

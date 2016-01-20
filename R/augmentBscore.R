@@ -61,6 +61,7 @@ augmentBscore.PlateData <- function(x,
     names(res) <- feat
     return(res)
   }, matched.feats, aggr.fun, .progress=progress.bar)
+  
   res <- lapply(matched.feats, function(feat, data) {
     dat <- sapply(data, function(dat, fet) {
       return(dat[[fet]])

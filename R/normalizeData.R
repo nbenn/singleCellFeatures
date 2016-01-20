@@ -194,7 +194,7 @@ findFeatureHelper <- function(data, select, drop, values, center, scale) {
     loc.sca <- lapply(res.sca, getFeatureLocationInStructure, struct)
     loc.sca <- do.call(rbind, loc.sca)
   } else loc.sca <- NULL
-
+  #browser()
   return(list(names=features, values=loc.val, center=loc.cen, scale=loc.sca))
 }
 
@@ -208,8 +208,10 @@ getImageStructure <- function(dat) {
         if(is.null(res)) res <- colnames(dat[[group]])
         return(res)
       }, dat[[top]])
-      feats <- feats[which(!sapply(feats, is.null))]
+      #notnull <- which(!sapply(feats, is.null))
+      #feats <- feats[notnull]
       if(length(feats) > 0) {
+        #names(feats) <- group.names[notnull]
         names(feats) <- group.names
         group.names  <- feats
       }
