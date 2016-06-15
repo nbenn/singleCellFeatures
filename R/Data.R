@@ -110,8 +110,7 @@ dowloadFeatureHelper <- function(plate, type, force.download=FALSE,
             " from openBIS.")
     config <- configGet()
     bee.command <- paste0(
-      "cd ", config$beeDownloader$executable, "; export BEESOFTSRC='",
-      config$beeDownloader$beeSoftsrc, "'; ./BeeDataSetDownloader.sh ",
+      "cd ", config$beeDownloader$executable, "; ./BeeDataSetDownloader.sh ",
       "--user '", config$openBIS$username, "' --password '",
       config$openBIS$password, "' --outputdir '", config$dataStorage$dataDir,
       "' --plateid '^", getOpenBisPath(plate), "' --files '", features, "'",

@@ -40,8 +40,7 @@ dataStorage:
   dataDir: "/path/to/data/dir"
   metaDir: "/path/to/metadata/dir"
 beeDownloader:
-  executable: "/path/to/trunk/openBIS/Tools/BeeDataSetDownloader"
-  beeSoftsrc: "/path/to/trunk"
+  executable: "/path/to/repo/openBIS/Tools/BeeDataSetDownloader"
 openBIS:
   username: "user"
   password: "password"
